@@ -484,7 +484,7 @@ export function PlaygroundTour() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Steps ({TOUR_TOTAL_STEPS})</CardTitle>
+              <CardTitle className="text-sm">Steps ({FULL_SUITE_TOTAL_STEPS})</CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[280px] pr-2">
