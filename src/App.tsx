@@ -45,6 +45,11 @@ import AuditTrail from "./pages/compliance/AuditTrail";
 import ESignatures from "./pages/compliance/ESignatures";
 import DataIntegrity from "./pages/compliance/DataIntegrity";
 import Validation from "./pages/compliance/Validation";
+import SecurityLayout from "./pages/security/SecurityLayout";
+import SecurityOverview from "./pages/security/Overview";
+import SecurityMfa from "./pages/security/Mfa";
+import SecuritySso from "./pages/security/Sso";
+import SecuritySessions from "./pages/security/Sessions";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -108,6 +113,12 @@ const App = () => (
                 <Route path="pyramid" element={<QualityPyramid />} />
                 <Route path="flaky" element={<QualityFlaky />} />
                 <Route path="coverage" element={<QualityCoverage />} />
+              </Route>
+              <Route path="/security" element={<SecurityLayout />}>
+                <Route index element={<SecurityOverview />} />
+                <Route path="mfa" element={<SecurityMfa />} />
+                <Route path="sso" element={<SecuritySso />} />
+                <Route path="sessions" element={<SecuritySessions />} />
               </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>
