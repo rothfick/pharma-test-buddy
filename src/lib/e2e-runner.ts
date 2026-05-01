@@ -63,6 +63,83 @@ async function expectThrows(fn: () => Promise<unknown>, msg = "expected to throw
   if (!threw) throw new Error(msg);
 }
 
+// Wait for React commits to flush.
+async function tick(ms = 50): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+// Mount <PlaywrightStarter/> in a detached container with the providers it
+// needs (router + react-query). Returns the container and an unmount fn.
+async function mountPlaywrightStarter(): Promise<{
+  container: HTMLDivElement;
+  unmount: () => void;
+}> {
+  const [{ createRoot }, React, { MemoryRouter }, { QueryClient, QueryClientProvider }, { default: PlaywrightStarter }] =
+    await Promise.all([
+      import("react-dom/client"),
+      import("react"),
+      import("react-router-dom"),
+      import("@tanstack/react-query"),
+      import("@/pages/PlaywrightStarter"),
+    ]);
+
+  const container = document.createElement("div");
+  container.setAttribute("data-e2e-mount", "playwright-starter");
+  container.style.position = "fixed";
+  container.style.left = "-99999px";
+  container.style.top = "0";
+  container.style.width = "1280px";
+  container.style.height = "800px";
+  document.body.appendChild(container);
+
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const root = createRoot(container);
+  root.render(
+    React.createElement(
+      QueryClientProvider,
+      { client: qc },
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/playwright-starter"] },
+        React.createElement(PlaywrightStarter),
+      ),
+    ),
+  );
+  // Let initial render commit.
+  await tick(120);
+  return {
+    container,
+    unmount: () => {
+      root.unmount();
+      container.parentElement?.removeChild(container);
+    },
+  };
+}
+
+// Switch to the "Test Catalog" tab and select the first test so the
+// RunWithPreview stage mounts in the DOM.
+async function openFirstTestDetail(
+  container: HTMLDivElement,
+  log: (line: string) => void,
+): Promise<void> {
+  // Tabs use role=tab; pick the catalog tab via its stable test-id.
+  const catalogTab =
+    container.querySelector<HTMLElement>('[data-testid="tab-catalog"]') ??
+    Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find((t) =>
+      /test catalog/i.test(t.textContent ?? ""),
+    );
+  if (catalogTab) {
+    catalogTab.click();
+    await tick(80);
+    log("switched to Test Catalog tab");
+  }
+  // The detail card auto-selects the first test. Just wait for the stage.
+  for (let i = 0; i < 30; i++) {
+    if (container.querySelector('[data-testid^="run-manually-"]')) return;
+    await tick(50);
+  }
+}
+
 // ---------- cases ----------
 
 const CASES: E2ECase[] = [
@@ -329,46 +406,114 @@ const CASES: E2ECase[] = [
   },
 
   // ===== playwright-starter-preview.test.tsx =====
-  // These three Vitest cases require @testing-library/react + a router. We
-  // mark them as skipped here; the suite is still verified by Vitest in CI.
+  // Real DOM tests: mount <PlaywrightStarter/> in a detached container with
+  // MemoryRouter + QueryClient and assert the new "Run manually" UX wired
+  // into the Test source section.
   {
     id: "ui-render-stage",
     file: "playwright-starter-preview.test.tsx",
-    name: "renders the catalog tab with the live preview stage",
-    intent: "Wymaga renderingu pełnej strony — uruchamiane tylko w Vitest (CI).",
+    name: "renders the catalog with a Run manually button per test",
+    intent: "Mountuje stronę i sprawdza, że pierwszy test ma przycisk Run manually.",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const btn = m.container.querySelector('[data-testid^="run-manually-"]');
+        assert(btn, "expected a [data-testid^=run-manually-] button");
+        log(`found ${btn.getAttribute("data-testid")}`);
+      } finally {
+        m.unmount();
+      }
     },
   },
   {
     id: "ui-expand",
     file: "playwright-starter-preview.test.tsx",
-    name: "toggling Maximize expands the preview to a 75% overlay",
-    intent: "Wymaga @testing-library/react — uruchamiane tylko w Vitest (CI).",
+    name: "clicking Run manually opens the live preview dialog",
+    intent: "Klika Run manually i weryfikuje, że dialog z LiveBrowser się otwiera.",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const btn = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid^="run-manually-"]',
+        );
+        assert(btn, "Run manually button not found");
+        btn.click();
+        await tick(120);
+        const dialog = document.querySelector('[role="dialog"]');
+        assert(dialog, "dialog did not open");
+        const iframe = dialog.querySelector("iframe");
+        assert(iframe, "live preview iframe missing in dialog");
+        log("dialog opened with iframe");
+        // close to leave clean state — try ESC
+        const ev = new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+        dialog.dispatchEvent(ev);
+        await tick(60);
+      } finally {
+        m.unmount();
+      }
     },
   },
   {
     id: "ui-close",
     file: "playwright-starter-preview.test.tsx",
-    name: "Close button collapses the preview back to inline",
-    intent: "Wymaga @testing-library/react — uruchamiane tylko w Vitest (CI).",
+    name: "Close button dismisses the manual run dialog",
+    intent: "Otwiera dialog i zamyka go przyciskiem Close.",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const btn = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid^="run-manually-"]',
+        );
+        assert(btn, "Run manually button not found");
+        btn.click();
+        await tick(120);
+        let dialog = document.querySelector('[role="dialog"]');
+        assert(dialog, "dialog did not open");
+        // Find a button labelled "Close" inside the dialog
+        const closeBtn = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button")).find(
+          (b) => /^\s*close\s*$/i.test(b.textContent ?? ""),
+        );
+        assert(closeBtn, "Close button not found");
+        closeBtn.click();
+        await tick(120);
+        dialog = document.querySelector('[role="dialog"]');
+        assert(!dialog, "dialog still present after Close");
+        log("dialog closed via Close button");
+      } finally {
+        m.unmount();
+      }
     },
   },
   {
     id: "ui-backdrop",
     file: "playwright-starter-preview.test.tsx",
-    name: "clicking the backdrop dismisses the modal when not running",
-    intent: "Wymaga @testing-library/react — uruchamiane tylko w Vitest (CI).",
+    name: "Escape key dismisses the manual run dialog",
+    intent: "Otwiera dialog i zamyka go klawiszem Escape (Radix overlay).",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const btn = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid^="run-manually-"]',
+        );
+        assert(btn, "Run manually button not found");
+        btn.click();
+        await tick(120);
+        let dialog = document.querySelector('[role="dialog"]');
+        assert(dialog, "dialog did not open");
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        );
+        await tick(150);
+        dialog = document.querySelector('[role="dialog"]');
+        assert(!dialog, "dialog still present after Escape");
+        log("dialog dismissed via Escape");
+      } finally {
+        m.unmount();
+      }
     },
   },
 ];
