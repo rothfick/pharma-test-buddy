@@ -287,8 +287,12 @@ function CatalogTab() {
     });
   }, [query, category]);
 
-  const selected =
-    PLAYWRIGHT_TESTS.find((t) => t.id === selectedId) ?? filtered[0] ?? PLAYWRIGHT_TESTS[0];
+  // If the currently selected test isn't in the filtered list, fall back to the first match
+  const selectedInFiltered = filtered.find((t) => t.id === selectedId);
+  const selected = selectedInFiltered ?? filtered[0] ?? PLAYWRIGHT_TESTS[0];
+  useEffect(() => {
+    if (!selectedInFiltered && filtered[0]) setSelectedId(filtered[0].id);
+  }, [selectedInFiltered, filtered]);
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,360px)_1fr]">
