@@ -165,7 +165,7 @@ export function PlaygroundTour() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setRecError(msg);
-        pushLog({ text: `⚠ Recording unavailable: ${msg}`, kind: "fail" });
+        pushLog({ text: `⚠ Recording skipped: ${msg}`, kind: "system" });
       }
     }
 
