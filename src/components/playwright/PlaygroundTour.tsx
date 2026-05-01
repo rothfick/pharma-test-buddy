@@ -43,8 +43,12 @@ import {
   FULL_SUITE_STEPS,
   FULL_SUITE_TOTAL_STEPS,
   FULL_SUITE_TOTAL_CMDS,
+  STEP_CATEGORIES,
+  type StepCategory,
   type TourStep,
 } from "@/lib/playground-tour";
+import { CATEGORY_STYLES } from "@/lib/playwright-categories";
+import { Compass as CompassIcon } from "lucide-react";
 import { ScreenRecorder, type RecorderResult } from "@/lib/screen-recorder";
 
 type StepStatus = "idle" | "running" | "pass" | "fail" | "skipped";
@@ -128,6 +132,49 @@ export function PlaygroundTour() {
     }
     return { pass, fail, skipped };
   }, [statuses]);
+
+  // Per-category live counters for the "Category strip" shown above the
+  // preview. Order matches the user's request (API, Smoke, Regression,
+  // Chaos, Security, Performance) with the rest appended after.
+  const PRIMARY_CATEGORIES: StepCategory[] = [
+    "Smoke",
+    "API",
+    "Regression",
+    "Chaos / Resilience",
+    "Security",
+    "Performance",
+  ];
+  const SECONDARY_CATEGORIES: StepCategory[] = [
+    "Auth & MFA",
+    "E2E Journeys",
+    "Accessibility",
+    "Visual",
+    "Mobile",
+    "Compliance (21 CFR Part 11)",
+    "Tour" as StepCategory,
+  ];
+
+  const categoryStats = useMemo(() => {
+    const init = () => ({ total: 0, pass: 0, fail: 0, running: 0, skipped: 0, idle: 0 });
+    const map = new Map<StepCategory, ReturnType<typeof init>>();
+    for (let i = 0; i < FULL_SUITE_TOTAL_STEPS; i++) {
+      const cat = STEP_CATEGORIES[i] ?? ("Tour" as StepCategory);
+      if (!map.has(cat)) map.set(cat, init());
+      const bucket = map.get(cat)!;
+      bucket.total++;
+      const st = statuses[i];
+      if (st === "pass") bucket.pass++;
+      else if (st === "fail") bucket.fail++;
+      else if (st === "running") bucket.running++;
+      else if (st === "skipped") bucket.skipped++;
+      else bucket.idle++;
+    }
+    return map;
+  }, [statuses]);
+
+  const activeCategory: StepCategory | null =
+    activeIdx >= 0 ? STEP_CATEGORIES[activeIdx] ?? null : null;
+
 
   function pushLog(line: Omit<LogLine, "ts">) {
     setLogs((prev) => {
@@ -376,6 +423,41 @@ export function PlaygroundTour() {
             <Stat label="Progress" value={`${progress}%`} tone="primary" />
           </div>
           <Progress value={progress} className="h-2" />
+
+          {/* Live category strip — pokazuje na żywo postęp w kategoriach
+              testów (Smoke, API, Regression, Chaos, Security, Performance, …)
+              w trakcie trwania Playground Tour. */}
+          <div className="space-y-2" data-testid="tour-category-strip">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Test categories — live
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {PRIMARY_CATEGORIES.map((cat) => (
+                <CategoryChip
+                  key={cat}
+                  category={cat}
+                  stats={categoryStats.get(cat) ?? { total: 0, pass: 0, fail: 0, running: 0, skipped: 0, idle: 0 }}
+                  active={activeCategory === cat}
+                />
+              ))}
+            </div>
+            <details className="group">
+              <summary className="cursor-pointer text-[10px] uppercase tracking-wide text-muted-foreground hover:text-foreground">
+                + more categories ({SECONDARY_CATEGORIES.length})
+              </summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {SECONDARY_CATEGORIES.map((cat) => (
+                  <CategoryChip
+                    key={cat}
+                    category={cat}
+                    stats={categoryStats.get(cat) ?? { total: 0, pass: 0, fail: 0, running: 0, skipped: 0, idle: 0 }}
+                    active={activeCategory === cat}
+                  />
+                ))}
+              </div>
+            </details>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="outline" className="gap-1">
               <ShieldCheck className="h-3 w-3" /> Auto-rollback
@@ -597,6 +679,69 @@ function Stat({
     <div className="rounded-lg border bg-card p-3">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={cn("mt-1 text-xl font-semibold", cls)}>{value}</p>
+    </div>
+  );
+}
+
+function CategoryChip({
+  category,
+  stats,
+  active,
+}: {
+  category: StepCategory;
+  stats: { total: number; pass: number; fail: number; running: number; skipped: number; idle: number };
+  active: boolean;
+}) {
+  const style = CATEGORY_STYLES[category as keyof typeof CATEGORY_STYLES];
+  const Icon = style?.icon ?? CompassIcon;
+  const done = stats.pass + stats.fail + stats.skipped;
+  const pct = stats.total ? Math.round((done / stats.total) * 100) : 0;
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-lg border bg-card p-2.5 transition-all",
+        style?.ring ?? "border-border",
+        active && "ring-2 ring-primary/60 shadow-elegant",
+      )}
+      data-testid={`tour-category-${category.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-md", style?.soft ?? "bg-muted")}>
+            <Icon className={cn("h-3.5 w-3.5", style?.text ?? "text-foreground")} />
+          </span>
+          <span className="truncate text-xs font-medium">{category}</span>
+          {stats.running > 0 && (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+          )}
+        </div>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {done}/{stats.total}
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-[10px]">
+        <span className="flex items-center gap-1 text-emerald-600">
+          <CheckCircle2 className="h-3 w-3" /> {stats.pass}
+        </span>
+        <span className="flex items-center gap-1 text-destructive">
+          <XCircle className="h-3 w-3" /> {stats.fail}
+        </span>
+        {stats.skipped > 0 && (
+          <span className="flex items-center gap-1 text-amber-500">
+            <CircleDashed className="h-3 w-3" /> {stats.skipped}
+          </span>
+        )}
+        <span className="ml-auto font-mono text-muted-foreground">{pct}%</span>
+      </div>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            "h-full transition-all",
+            stats.fail > 0 ? "bg-destructive" : "bg-primary",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

@@ -576,3 +576,37 @@ export const FULL_SUITE_TOTAL_CMDS = FULL_SUITE_STEPS.reduce(
   (n, s) => n + s.cmds.length,
   0,
 );
+
+// ────────────────────────────────────────────────────────────────────────────
+// Per-step category mapping — used by the live "Category strip" in the tour
+// UI to show real-time pass/fail/running counters per test family
+// (Smoke / API / Regression / Chaos / Security / Performance / …).
+// ────────────────────────────────────────────────────────────────────────────
+import type { PwCategory } from "./playwright-tests";
+
+export type StepCategory = PwCategory | "Tour";
+
+function categorizeTourStep(step: TourStep): StepCategory {
+  const label = step.label.toLowerCase();
+  const page = step.page;
+  if (page === "/auth" || label.includes("sign-in") || label.includes("otp") || label.includes("captcha"))
+    return "Auth & MFA";
+  if (page.startsWith("/compliance")) return "Compliance (21 CFR Part 11)";
+  if (page.startsWith("/playground/security") || label.includes("rate limit") || label.includes("session"))
+    return "Security";
+  if (page.startsWith("/playground/a11y") || label.includes("a11y") || label.includes("language"))
+    return "Accessibility";
+  if (page.startsWith("/playground/async") || label.includes("polling") || label.includes("realtime") || label.includes("auto-save"))
+    return "Performance";
+  if (page.startsWith("/playground/legacy") && label.includes("api")) return "API";
+  if (label.includes("flaky")) return "Chaos / Resilience";
+  return "Tour";
+}
+
+export const STEP_CATEGORIES: StepCategory[] = (() => {
+  const out: StepCategory[] = [];
+  for (const s of PLAYGROUND_TOUR) out.push(categorizeTourStep(s));
+  for (const t of PLAYWRIGHT_TESTS as PwTest[]) out.push(t.category as StepCategory);
+  return out;
+})();
+
