@@ -53,8 +53,8 @@ export default function TestGenerator() {
         },
         body: JSON.stringify({
           feature: "test-generator",
-          model: "google/gemini-2.5-pro",
-          fallbacks: ["google/gemini-3-flash-preview"],
+          model: "google/gemini-3-flash-preview",
+          fallbacks: ["google/gemini-2.5-flash", "google/gemini-2.5-pro"],
           stream: true,
           messages: [
             { role: "system", content: SYSTEM },
