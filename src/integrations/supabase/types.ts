@@ -14,6 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_runs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          goal: string
+          id: string
+          result: Json | null
+          status: string
+          total_cost_usd: number
+          total_tokens: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          goal: string
+          id?: string
+          result?: Json | null
+          status?: string
+          total_cost_usd?: number
+          total_tokens?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          goal?: string
+          id?: string
+          result?: Json | null
+          status?: string
+          total_cost_usd?: number
+          total_tokens?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      agent_steps: {
+        Row: {
+          agent_role: string
+          created_at: string
+          duration_ms: number | null
+          id: string
+          input: Json | null
+          output: Json | null
+          reasoning: string | null
+          run_id: string
+          step_index: number
+          tokens: number | null
+          tool_name: string | null
+        }
+        Insert: {
+          agent_role: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          reasoning?: string | null
+          run_id: string
+          step_index: number
+          tokens?: number | null
+          tool_name?: string | null
+        }
+        Update: {
+          agent_role?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          reasoning?: string | null
+          run_id?: string
+          step_index?: number
+          tokens?: number | null
+          tool_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      llm_traces: {
+        Row: {
+          cache_hit: boolean
+          completion_tokens: number
+          cost_usd: number
+          created_at: string
+          error: string | null
+          feature: string
+          id: string
+          latency_ms: number
+          metadata: Json
+          model: string
+          prompt_tokens: number
+          request_preview: string | null
+          response_preview: string | null
+          status: string
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          cache_hit?: boolean
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          feature: string
+          id?: string
+          latency_ms?: number
+          metadata?: Json
+          model: string
+          prompt_tokens?: number
+          request_preview?: string | null
+          response_preview?: string | null
+          status?: string
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          cache_hit?: boolean
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          feature?: string
+          id?: string
+          latency_ms?: number
+          metadata?: Json
+          model?: string
+          prompt_tokens?: number
+          request_preview?: string | null
+          response_preview?: string | null
+          status?: string
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -35,6 +184,193 @@ export type Database = {
           display_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      prompt_evals: {
+        Row: {
+          avg_latency_ms: number
+          created_at: string
+          dataset_name: string
+          details: Json
+          id: string
+          model: string
+          passed_cases: number
+          prompt_id: string | null
+          score: number
+          total_cases: number
+          total_cost_usd: number
+        }
+        Insert: {
+          avg_latency_ms?: number
+          created_at?: string
+          dataset_name: string
+          details?: Json
+          id?: string
+          model: string
+          passed_cases?: number
+          prompt_id?: string | null
+          score: number
+          total_cases?: number
+          total_cost_usd?: number
+        }
+        Update: {
+          avg_latency_ms?: number
+          created_at?: string
+          dataset_name?: string
+          details?: Json
+          id?: string
+          model?: string
+          passed_cases?: number
+          prompt_id?: string | null
+          score?: number
+          total_cases?: number
+          total_cost_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_evals_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_registry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_registry: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      rag_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rag_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "rag_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rag_documents: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json
+          source: string | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          source?: string | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          source?: string | null
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      semantic_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          feature: string
+          hit_count: number
+          id: string
+          model: string
+          prompt_embedding: string | null
+          prompt_text: string
+          response: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          feature: string
+          hit_count?: number
+          id?: string
+          model: string
+          prompt_embedding?: string | null
+          prompt_text: string
+          response: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          feature?: string
+          hit_count?: number
+          id?: string
+          model?: string
+          prompt_embedding?: string | null
+          prompt_text?: string
+          response?: string
         }
         Relationships: []
       }
@@ -109,6 +445,31 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_rag_chunks: {
+        Args: {
+          filter_doc_ids?: string[]
+          match_count?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          similarity: number
+        }[]
+      }
+      match_semantic_cache: {
+        Args: {
+          feature_filter: string
+          query_embedding: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          id: string
+          response: string
+          similarity: number
+        }[]
       }
     }
     Enums: {
