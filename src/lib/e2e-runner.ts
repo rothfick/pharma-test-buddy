@@ -68,12 +68,45 @@ async function tick(ms = 50): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
 }
 
-// Mount <PlaywrightStarter/> in a detached container with the providers it
-// needs (router + react-query). Returns the container and an unmount fn.
+// Mount <PlaywrightStarter/> inside a hidden iframe so Radix portals
+// (dialog, overlay, toast) render into the iframe's document instead of the
+// host document.body — that prevents any visible "flash" on the user's
+// screen during the E2E run.
 async function mountPlaywrightStarter(): Promise<{
   container: HTMLDivElement;
+  doc: Document;
   unmount: () => void;
 }> {
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.setAttribute("data-e2e-mount", "playwright-starter");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-99999px";
+  iframe.style.top = "0";
+  iframe.style.width = "1280px";
+  iframe.style.height = "800px";
+  iframe.style.border = "0";
+  iframe.style.opacity = "0";
+  iframe.style.pointerEvents = "none";
+  document.body.appendChild(iframe);
+
+  const idoc = iframe.contentDocument!;
+  idoc.open();
+  idoc.write(
+    `<!doctype html><html><head><base href="${location.origin}/"/></head><body><div id="root" style="width:1280px;height:800px"></div></body></html>`,
+  );
+  idoc.close();
+
+  // Mirror parent stylesheets so Tailwind classes resolve inside the iframe.
+  for (const link of Array.from(document.querySelectorAll('link[rel="stylesheet"]'))) {
+    idoc.head.appendChild(link.cloneNode(true));
+  }
+  for (const style of Array.from(document.querySelectorAll("style"))) {
+    idoc.head.appendChild(style.cloneNode(true));
+  }
+
+  const container = idoc.getElementById("root") as HTMLDivElement;
+
   const [{ createRoot }, React, { MemoryRouter }, { QueryClient, QueryClientProvider }, { default: PlaywrightStarter }] =
     await Promise.all([
       import("react-dom/client"),
@@ -82,15 +115,6 @@ async function mountPlaywrightStarter(): Promise<{
       import("@tanstack/react-query"),
       import("@/pages/PlaywrightStarter"),
     ]);
-
-  const container = document.createElement("div");
-  container.setAttribute("data-e2e-mount", "playwright-starter");
-  container.style.position = "fixed";
-  container.style.left = "-99999px";
-  container.style.top = "0";
-  container.style.width = "1280px";
-  container.style.height = "800px";
-  document.body.appendChild(container);
 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const root = createRoot(container);
@@ -105,13 +129,13 @@ async function mountPlaywrightStarter(): Promise<{
       ),
     ),
   );
-  // Let initial render commit.
   await tick(120);
   return {
     container,
+    doc: idoc,
     unmount: () => {
       root.unmount();
-      container.parentElement?.removeChild(container);
+      iframe.parentElement?.removeChild(iframe);
     },
   };
 }
@@ -122,7 +146,6 @@ async function openFirstTestDetail(
   container: HTMLDivElement,
   log: (line: string) => void,
 ): Promise<void> {
-  // Tabs use role=tab; pick the catalog tab via its stable test-id.
   const catalogTab =
     container.querySelector<HTMLElement>('[data-testid="tab-catalog"]') ??
     Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find((t) =>
@@ -133,7 +156,6 @@ async function openFirstTestDetail(
     await tick(80);
     log("switched to Test Catalog tab");
   }
-  // The detail card auto-selects the first test. Just wait for the stage.
   for (let i = 0; i < 30; i++) {
     if (container.querySelector('[data-testid^="run-manually-"]')) return;
     await tick(50);
@@ -441,12 +463,11 @@ const CASES: E2ECase[] = [
         assert(btn, "Run manually button not found");
         btn.click();
         await tick(120);
-        const dialog = document.querySelector('[role="dialog"]');
+        const dialog = m.doc.querySelector('[role="dialog"]');
         assert(dialog, "dialog did not open");
         const iframe = dialog.querySelector("iframe");
         assert(iframe, "live preview iframe missing in dialog");
         log("dialog opened with iframe");
-        // close to leave clean state — try ESC
         const ev = new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
         dialog.dispatchEvent(ev);
         await tick(60);
@@ -470,16 +491,15 @@ const CASES: E2ECase[] = [
         assert(btn, "Run manually button not found");
         btn.click();
         await tick(120);
-        let dialog = document.querySelector('[role="dialog"]');
+        let dialog = m.doc.querySelector('[role="dialog"]');
         assert(dialog, "dialog did not open");
-        // Find a button labelled "Close" inside the dialog
         const closeBtn = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button")).find(
           (b) => /^\s*close\s*$/i.test(b.textContent ?? ""),
         );
         assert(closeBtn, "Close button not found");
         closeBtn.click();
         await tick(120);
-        dialog = document.querySelector('[role="dialog"]');
+        dialog = m.doc.querySelector('[role="dialog"]');
         assert(!dialog, "dialog still present after Close");
         log("dialog closed via Close button");
       } finally {
@@ -502,13 +522,13 @@ const CASES: E2ECase[] = [
         assert(btn, "Run manually button not found");
         btn.click();
         await tick(120);
-        let dialog = document.querySelector('[role="dialog"]');
+        let dialog = m.doc.querySelector('[role="dialog"]');
         assert(dialog, "dialog did not open");
-        document.dispatchEvent(
+        m.doc.dispatchEvent(
           new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
         );
         await tick(150);
-        dialog = document.querySelector('[role="dialog"]');
+        dialog = m.doc.querySelector('[role="dialog"]');
         assert(!dialog, "dialog still present after Escape");
         log("dialog dismissed via Escape");
       } finally {
