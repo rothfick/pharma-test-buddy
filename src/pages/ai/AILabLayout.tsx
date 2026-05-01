@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Activity, Wand2, Wrench, Bug, ImageIcon, Bot, BookOpen,
-  Beaker, Shield, LayoutGrid, Swords,
+  Beaker, Shield, LayoutGrid, Swords, DollarSign,
 } from "lucide-react";
 
 const subNav = [
@@ -17,6 +17,7 @@ const subNav = [
   { to: "/ai/evals", label: "Evals", icon: Beaker, testid: "ai-evals" },
   { to: "/ai/guardrails", label: "Guardrails", icon: Shield, testid: "ai-guard" },
   { to: "/ai/prompt-playground", label: "Prompt Playground", icon: Swords, testid: "ai-pp" },
+  { to: "/ai/cost-tracker", label: "Cost Tracker", icon: DollarSign, testid: "ai-cost" },
 ];
 
 export default function AILabLayout() {

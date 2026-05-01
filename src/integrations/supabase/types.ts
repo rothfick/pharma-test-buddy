@@ -106,6 +106,33 @@ export type Database = {
           },
         ]
       }
+      feature_budgets: {
+        Row: {
+          created_at: string
+          daily_limit_usd: number
+          enabled: boolean
+          feature: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_limit_usd?: number
+          enabled?: boolean
+          feature: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_limit_usd?: number
+          enabled?: boolean
+          feature?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       llm_traces: {
         Row: {
           cache_hit: boolean
@@ -439,6 +466,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      feature_spend_today: { Args: { _feature: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

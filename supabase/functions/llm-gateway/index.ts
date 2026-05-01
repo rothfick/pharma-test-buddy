@@ -94,7 +94,37 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ---------- Semantic cache lookup (non-streaming, no tools) ----------
+  // ---------- Budget guard ----------
+  try {
+    const { data: budget } = await admin
+      .from("feature_budgets")
+      .select("daily_limit_usd, enabled")
+      .eq("feature", feature)
+      .maybeSingle();
+
+    if (budget && budget.enabled) {
+      const { data: spendData } = await admin
+        .rpc("feature_spend_today", { _feature: feature });
+      const spendToday = Number(spendData ?? 0);
+      if (spendToday >= Number(budget.daily_limit_usd)) {
+        await admin.from("llm_traces").insert({
+          user_id: userId, feature, model,
+          status: "error", error: "budget_exceeded",
+          latency_ms: Date.now() - t0,
+        });
+        return new Response(JSON.stringify({
+          error: "budget_exceeded",
+          message: `Daily budget for "${feature}" exhausted ($${spendToday.toFixed(4)} / $${Number(budget.daily_limit_usd).toFixed(2)}). Try again tomorrow or raise the limit.`,
+          spend_today: spendToday,
+          daily_limit: Number(budget.daily_limit_usd),
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+  } catch (e) { console.error("budget guard failed", e); }
+
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
   const cacheKey = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
 
