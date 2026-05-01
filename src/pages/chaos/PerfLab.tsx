@@ -130,7 +130,6 @@ export default function PerfLab() {
     const errorRateActual = samples.length > 0 ? (failed / samples.length) * 100 : 0;
 
     const { error } = await supabase.from("perf_runs").insert({
-      // @ts-expect-error - types regenerate after migration
       user_id: user.id,
       scenario_name: scenarioName || `${profile.label} — ${new Date().toLocaleTimeString()}`,
       target_url: targetUrl,
