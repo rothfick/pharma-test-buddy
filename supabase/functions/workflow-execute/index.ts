@@ -202,9 +202,12 @@ Deno.serve(async (req) => {
           case "input":
             result = { output: body.input ?? {} };
             break;
-          case "output":
-            result = { output: ctx };
+          case "output": {
+            const snapshot: Record<string, unknown> = {};
+            for (const k of Object.keys(ctx)) if (k !== node.id) snapshot[k] = ctx[k];
+            result = { output: snapshot };
             break;
+          }
           case "llm":
             result = await runLLM(node, ctx, authHeader);
             totalCost += result.cost_usd ?? 0;
