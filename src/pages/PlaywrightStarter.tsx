@@ -28,6 +28,7 @@ import {
   Zap,
   Terminal,
   ListChecks,
+  Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -38,6 +39,8 @@ import {
   type TestStatus,
 } from "@/lib/playwright-tests";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
+import { planForTest, type VisualPlan } from "@/lib/playwright-visual";
+import { BrowserPreview } from "@/components/playwright/BrowserPreview";
 import { cn } from "@/lib/utils";
 
 type RunStatus = TestStatus | "running" | "queued" | "idle";
@@ -284,11 +287,15 @@ function CatalogTab() {
     });
   }, [query, category]);
 
-  const selected =
-    PLAYWRIGHT_TESTS.find((t) => t.id === selectedId) ?? filtered[0] ?? PLAYWRIGHT_TESTS[0];
+  // If the currently selected test isn't in the filtered list, fall back to the first match
+  const selectedInFiltered = filtered.find((t) => t.id === selectedId);
+  const selected = selectedInFiltered ?? filtered[0] ?? PLAYWRIGHT_TESTS[0];
+  useEffect(() => {
+    if (!selectedInFiltered && filtered[0]) setSelectedId(filtered[0].id);
+  }, [selectedInFiltered, filtered]);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,440px)_1fr]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,360px)_1fr]">
       <Card className="overflow-hidden">
         <CardHeader className="space-y-3">
           <div className="relative">
@@ -398,34 +405,211 @@ function CatalogTab() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
-            <CodeBlock code={selected.code} filename={`tests/${selected.id}.spec.ts`} />
-            <div>
-              <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-                <ListChecks className="h-3.5 w-3.5" /> Execution steps
-              </h4>
-              <ol className="space-y-1.5 text-sm">
-                {selected.steps.map((s, i) => (
+            <RunWithPreview test={selected} />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function RunWithPreview({ test }: { test: PwTest }) {
+  const [actionIndex, setActionIndex] = useState(-1);
+  const [activeStep, setActiveStep] = useState(-1);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<RunResult | null>(null);
+  const [plan, setPlan] = useState<VisualPlan | null>(null);
+  const cancelRef = useRef(false);
+
+  // Reset on test change
+  useEffect(() => {
+    cancelRef.current = true;
+    setActionIndex(-1);
+    setActiveStep(-1);
+    setRunning(false);
+    setResult(null);
+    setPlan(null);
+  }, [test.id]);
+
+  const run = async () => {
+    cancelRef.current = false;
+    const newPlan = planForTest(test.category, test.steps.length, test.expected);
+    setPlan(newPlan);
+    setActionIndex(0); // navigate
+    setActiveStep(-1);
+    setRunning(true);
+    setResult({ status: "running", completedSteps: 0, totalSteps: test.steps.length, log: [] });
+
+    const log: string[] = [];
+    let elapsed = 0;
+    let cursor = 1; // 0 = navigate, already emitted
+    await sleep(280);
+    if (cancelRef.current) return;
+
+    for (let i = 0; i < test.steps.length; i++) {
+      if (cancelRef.current) return;
+      const step = test.steps[i];
+      setActiveStep(i);
+      const actionsThisStep = newPlan.stepActionCounts[i] ?? 1;
+      const perAction = Math.max(220, Math.round((step.ms * 0.55) / actionsThisStep));
+      for (let a = 0; a < actionsThisStep; a++) {
+        if (cancelRef.current) return;
+        setActionIndex(cursor);
+        cursor++;
+        await sleep(perAction);
+      }
+      elapsed += step.ms;
+      log.push(`✓ ${step.label} (${step.ms}ms)`);
+      setResult({
+        status: "running",
+        completedSteps: i + 1,
+        totalSteps: test.steps.length,
+        log: [...log],
+        durationMs: elapsed,
+      });
+    }
+
+    const status: TestStatus = test.expected;
+    if (status === "fail")
+      log.push("✗ AssertionError: expected element to be visible (mock outcome)");
+    if (status === "flaky") log.push("⚠ Flaky: passed on retry #2");
+    setResult({
+      status,
+      completedSteps: test.steps.length,
+      totalSteps: test.steps.length,
+      log,
+      durationMs: elapsed,
+    });
+    setRunning(false);
+  };
+
+  const stop = () => {
+    cancelRef.current = true;
+    setRunning(false);
+  };
+
+  const reset = () => {
+    cancelRef.current = true;
+    setResult(null);
+    setPlan(null);
+    setActionIndex(-1);
+    setActiveStep(-1);
+  };
+
+  const finalStatus = result?.status;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Left: live browser preview */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+              <Monitor className="h-3.5 w-3.5" /> Live preview
+            </h4>
+            <div className="flex items-center gap-2">
+              {running && (
+                <Badge variant="outline" className="gap-1 text-[10px]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> REC
+                </Badge>
+              )}
+              <Badge variant="secondary" className="text-[10px]">
+                {plan?.scene.layout ?? "idle"}
+              </Badge>
+            </div>
+          </div>
+          <BrowserPreview plan={plan} actionIndex={actionIndex} />
+          <div className="flex items-center gap-2">
+            {!running ? (
+              <Button size="sm" onClick={run} data-testid={`run-${test.id}`} className="shadow-elegant">
+                <Play className="mr-1 h-3 w-3" /> {result ? "Replay" : "Run with live preview"}
+              </Button>
+            ) : (
+              <Button size="sm" variant="destructive" onClick={stop}>
+                <Square className="mr-1 h-3 w-3" /> Stop
+              </Button>
+            )}
+            {result && !running && (
+              <Button size="sm" variant="ghost" onClick={reset}>
+                <RefreshCw className="mr-1 h-3 w-3" /> Reset
+              </Button>
+            )}
+            {result?.durationMs !== undefined && (
+              <span className="ml-auto font-mono text-xs text-muted-foreground">
+                {(result.durationMs / 1000).toFixed(2)}s · {result.completedSteps}/
+                {result.totalSteps} steps
+              </span>
+            )}
+          </div>
+          {finalStatus && (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-md border px-3 py-2 text-sm",
+                finalStatus === "pass" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700",
+                finalStatus === "fail" && "border-destructive/40 bg-destructive/10 text-destructive",
+                finalStatus === "flaky" && "border-amber-500/40 bg-amber-500/10 text-amber-700",
+                finalStatus === "running" && "border-primary/40 bg-primary/10 text-primary",
+              )}
+            >
+              <StatusIcon status={finalStatus} pulse={finalStatus === "running"} />
+              <span className="font-medium">{labelFor(finalStatus)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Right: code + steps */}
+        <div className="space-y-3">
+          <CodeBlock code={test.code} filename={`tests/${test.id}.spec.ts`} />
+          <div>
+            <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+              <ListChecks className="h-3.5 w-3.5" /> Execution steps
+            </h4>
+            <ol className="space-y-1.5 text-sm">
+              {test.steps.map((s, i) => {
+                const done = result ? i < result.completedSteps : false;
+                const current = activeStep === i && running;
+                return (
                   <li
                     key={i}
-                    className="flex items-center gap-3 rounded-md border bg-card/50 px-3 py-1.5"
+                    className={cn(
+                      "flex items-center gap-3 rounded-md border bg-card/50 px-3 py-1.5 transition",
+                      current && "border-primary bg-primary/5 shadow-sm",
+                      done && !current && "border-emerald-500/30 bg-emerald-500/5",
+                    )}
                   >
-                    <span className="font-mono text-[10px] text-muted-foreground w-5">
-                      {String(i + 1).padStart(2, "0")}
+                    <span className="w-4">
+                      {current ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      ) : done ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      ) : (
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                      )}
                     </span>
                     <span className="flex-1">{s.label}</span>
                     <span className="font-mono text-[10px] text-muted-foreground">
                       ~{s.ms}ms
                     </span>
                   </li>
-                ))}
-              </ol>
-            </div>
-            <SingleRunButton test={selected} />
-          </CardContent>
-        </Card>
+                );
+              })}
+            </ol>
+          </div>
+          {result && result.log.length > 0 && (
+            <pre className="max-h-32 overflow-auto rounded-md bg-zinc-950 p-2.5 text-[11px] leading-snug text-zinc-200">
+              {result.log.join("\n")}
+            </pre>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
 }
 
 function CategoryChip({
@@ -536,103 +720,7 @@ function highlightLine(line: string) {
   );
 }
 
-function SingleRunButton({ test }: { test: PwTest }) {
-  const [result, setResult] = useState<RunResult | null>(null);
-  const [running, setRunning] = useState(false);
-
-  // Reset when test changes
-  useEffect(() => {
-    setResult(null);
-    setRunning(false);
-  }, [test.id]);
-
-  const run = async () => {
-    setRunning(true);
-    setResult({ status: "running", completedSteps: 0, totalSteps: test.steps.length, log: [] });
-    const log: string[] = [];
-    let elapsed = 0;
-    for (let i = 0; i < test.steps.length; i++) {
-      const s = test.steps[i];
-      const wait = Math.max(80, Math.round(s.ms * 0.1));
-      await new Promise((r) => setTimeout(r, wait));
-      elapsed += s.ms;
-      log.push(`✓ ${s.label} (${s.ms}ms)`);
-      setResult({
-        status: "running",
-        completedSteps: i + 1,
-        totalSteps: test.steps.length,
-        log: [...log],
-        durationMs: elapsed,
-      });
-    }
-    const status: TestStatus = test.expected;
-    if (status === "fail")
-      log.push("✗ AssertionError: expected element to be visible (mock outcome)");
-    if (status === "flaky") log.push("⚠ Flaky: passed on retry #2");
-    setResult({
-      status,
-      completedSteps: test.steps.length,
-      totalSteps: test.steps.length,
-      log,
-      durationMs: elapsed,
-    });
-    setRunning(false);
-  };
-
-  const reset = () => setResult(null);
-  const finalStatus = result?.status;
-
-  return (
-    <div
-      className={cn(
-        "rounded-lg border bg-muted/30 p-3 transition",
-        finalStatus === "pass" && "border-emerald-500/40 bg-emerald-500/5",
-        finalStatus === "fail" && "border-destructive/40 bg-destructive/5",
-        finalStatus === "flaky" && "border-amber-500/40 bg-amber-500/5",
-      )}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm">
-          <StatusIcon status={result?.status ?? "idle"} pulse={running} />
-          <span className="font-medium">
-            {result ? labelFor(result.status) : "Ready to run (demo)"}
-          </span>
-          {result?.durationMs !== undefined && (
-            <span className="font-mono text-xs text-muted-foreground">
-              {(result.durationMs / 1000).toFixed(2)}s
-            </span>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {result && !running && (
-            <Button size="sm" variant="ghost" onClick={reset}>
-              <RefreshCw className="mr-1 h-3 w-3" /> Reset
-            </Button>
-          )}
-          <Button size="sm" onClick={run} disabled={running} data-testid={`run-${test.id}`}>
-            {running ? (
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-            ) : (
-              <Play className="mr-1 h-3 w-3" />
-            )}
-            Run demo
-          </Button>
-        </div>
-      </div>
-      {result && (
-        <>
-          <Progress
-            value={(result.completedSteps / result.totalSteps) * 100}
-            className="mt-3 h-1.5"
-          />
-          <pre className="mt-3 max-h-40 overflow-auto rounded bg-zinc-950 p-2.5 text-[11px] leading-snug text-zinc-200">
-            {result.log.length === 0 ? "Starting…" : result.log.join("\n")}
-          </pre>
-        </>
-      )}
-    </div>
-  );
-}
+/* SingleRunButton replaced by RunWithPreview above */
 
 /* ---------- Live Runner ---------- */
 
