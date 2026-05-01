@@ -94,11 +94,11 @@ export async function rollbackTasks(snap: TasksSnapshot | null): Promise<Rollbac
     const { error } = await supabase
       .from("tasks")
       .update({
-        status: r.status,
-        priority: r.priority,
-        title: r.title,
-        description: r.description,
-        due_date: r.due_date,
+        status: r.status as never,
+        priority: r.priority as never,
+        title: r.title as never,
+        description: r.description as never,
+        due_date: r.due_date as never,
       })
       .eq("id", r.id as string);
     if (error) result.errors.push(`restore-update: ${error.message}`);
