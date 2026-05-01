@@ -313,6 +313,96 @@ const legacySteps: TourStep[] = [
   },
 ];
 
+// ---------- Compliance Hub (GxP / 21 CFR Part 11) ----------
+const complianceSteps: TourStep[] = [
+  {
+    page: "/compliance",
+    label: "Compliance: open Overview",
+    cmds: [GOTO("/compliance"), W(500), SEE('[data-testid="compliance-layout"]', 8000), SHOT("compliance-overview")],
+  },
+  {
+    page: "/compliance/audit-trail",
+    label: "Audit Trail: open page",
+    cmds: [
+      CLICK('[data-testid="comp-audit"]'),
+      W(600),
+      SEE('[data-testid="audit-trail"]', 8000),
+      SHOT("audit-trail"),
+    ],
+  },
+  {
+    page: "/compliance/audit-trail",
+    label: "Audit Trail: write demo entry",
+    cmds: [SCROLL('[data-testid="audit-write-demo"]'), CLICK('[data-testid="audit-write-demo"]'), W(900)],
+  },
+  {
+    page: "/compliance/audit-trail",
+    label: "Audit Trail: verify chain integrity",
+    cmds: [CLICK('[data-testid="audit-verify"]'), W(900), SEE('[data-testid="chain-status"]')],
+  },
+  {
+    page: "/compliance/audit-trail",
+    label: "Audit Trail: filter + reload",
+    cmds: [
+      FILL('[data-testid="audit-filter"]', "demo"),
+      W(400),
+      CLICK('[data-testid="audit-reload"]'),
+      W(700),
+    ],
+  },
+  {
+    page: "/compliance/audit-trail",
+    label: "Audit Trail: export CSV",
+    cmds: [CLICK('[data-testid="audit-export"]'), W(700)],
+  },
+  {
+    page: "/compliance/e-signatures",
+    label: "E-Signatures: open page",
+    cmds: [
+      CLICK('[data-testid="comp-esig"]'),
+      W(600),
+      SEE('[data-testid="esig-page"]', 8000),
+      SHOT("e-signatures"),
+    ],
+  },
+  {
+    page: "/compliance/e-signatures",
+    label: "E-Signatures: fill form (no submit)",
+    cmds: [
+      FILL('[data-testid="esig-entity-type"]', "tour-demo"),
+      FILL('[data-testid="esig-entity-id"]', "00000000-0000-0000-0000-000000000000"),
+      FILL('[data-testid="esig-action"]', "approve"),
+      FILL('[data-testid="esig-reason"]', "Tour walkthrough — no real signature submitted."),
+      FILL('[data-testid="esig-witness"]', "witness@example.com"),
+      W(400),
+      CLICK('[data-testid="esig-confirmation"]'),
+      W(300),
+      SHOT("esig-filled"),
+    ],
+  },
+  {
+    page: "/compliance/data-integrity",
+    label: "Data Integrity (ALCOA+): open page",
+    cmds: [
+      CLICK('[data-testid="comp-alcoa"]'),
+      W(600),
+      SEE('[data-testid="alcoa-page"]', 8000),
+      SEE('[data-testid="alcoa-score"]'),
+      SHOT("alcoa"),
+    ],
+  },
+  {
+    page: "/compliance/validation",
+    label: "Validation IQ/OQ/PQ: open page",
+    cmds: [
+      CLICK('[data-testid="comp-val"]'),
+      W(600),
+      SEE('[data-testid="validation-page"]', 8000),
+      SHOT("validation"),
+    ],
+  },
+];
+
 // Final flourish: walk back to overview.
 const finaleSteps: TourStep[] = [
   {
@@ -331,6 +421,7 @@ export const PLAYGROUND_TOUR: TourStep[] = [
   ...securitySteps,
   ...a11ySteps,
   ...legacySteps,
+  ...complianceSteps,
   ...finaleSteps,
 ];
 
