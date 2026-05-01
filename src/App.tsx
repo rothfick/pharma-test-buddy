@@ -71,9 +71,9 @@ const App = () => (
                 <Route path="bug-triage" element={<AIBugTriage />} />
                 <Route path="visual-diff" element={<AIVisualDiff />} />
                 <Route path="agents" element={<AIAgentCrew />} />
-                <Route path="rag" element={<AIComingSoon title="RAG nad dokumentacją" description="Upload PDF/MD → embeddings → Q&A z cytowaniami." plan={["Upload dokumentu → chunking (500 tok overlap 50)","Embeddingi → pgvector (już gotowe w schemacie)","Q&A: top-k retrieval + answer z cytowaniami","Guardrail: similarity<0.7 → 'I don't know'"]} />} />
-                <Route path="evals" element={<AIComingSoon title="Eval Harness" description="Datasety, metryki, A/B promptów." plan={["Prompt registry UI (CRUD wersji)","Datasets jako JSONL (input + expected)","Run eval: model X prompt vN → score, latency, cost","Side-by-side comparison + wykres trendu"]} />} />
-                <Route path="guardrails" element={<AIComingSoon title="Guardrails Playground" description="Prompt injection, PII, schema validation." plan={["Predefiniowane ataki (Ignore previous, DAN, prompt leak)","Pipeline: input scanner → LLM → output scanner","PII redaction (regex + LLM) z podświetleniem zamian","Score: blocked vs passed, false positive rate"]} />} />
+                <Route path="rag" element={<AIRag />} />
+                <Route path="evals" element={<AIEvals />} />
+                <Route path="guardrails" element={<AIGuardrails />} />
               </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>
