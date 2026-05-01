@@ -131,8 +131,8 @@ async function openFirstTestDetail(
     log("switched to Test Catalog tab");
   }
   // The detail card auto-selects the first test. Just wait for the stage.
-  for (let i = 0; i < 20; i++) {
-    if (container.querySelector('[data-testid="preview-stage"]')) return;
+  for (let i = 0; i < 30; i++) {
+    if (container.querySelector('[data-testid^="run-manually-"]')) return;
     await tick(50);
   }
 }
