@@ -436,357 +436,81 @@ function CatalogTab() {
 }
 
 function RunWithPreview({ test }: { test: PwTest }) {
-  const [activeStep, setActiveStep] = useState(-1);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<RunResult | null>(null);
-  const [highlight, setHighlight] = useState<HighlightRect | null>(null);
-  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
-  const [flashKey, setFlashKey] = useState(0);
-  const [screenshotLabel, setScreenshotLabel] = useState<string | null>(null);
-  const [iframeUrl, setIframeUrl] = useState<string>("about:blank");
-  const [rollbackInfo, setRollbackInfo] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const cancelRef = useRef({ current: false });
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const driverRef = useRef<LiveDriver | null>(null);
-
-  const scenario = useMemo(() => buildScenario(test), [test]);
-
-  // Reset on test change
-  useEffect(() => {
-    cancelRef.current.current = true;
-    setActiveStep(-1);
-    setRunning(false);
-    setResult(null);
-    setHighlight(null);
-    setCursor(null);
-    setScreenshotLabel(null);
-    setRollbackInfo(null);
-  }, [test.id]);
-
-  const onIframeReady = (el: HTMLIFrameElement) => {
-    iframeRef.current = el;
-  };
-
-  const handleEvent = (e: DriverEvent) => {
-    switch (e.type) {
-      case "step-start":
-        if (e.cmd?.kind === "goto") {
-          setFlashKey((k) => k + 1);
-        }
-        break;
-      case "step-end":
-        // handled per command index in run loop
-        break;
-      case "highlight":
-        if (e.rect) setHighlight(e.rect);
-        break;
-      case "cursor":
-        if (e.rect) setCursor({ x: e.rect.x, y: e.rect.y });
-        break;
-      case "screenshot":
-        setScreenshotLabel(e.label ?? null);
-        setFlashKey((k) => k + 1);
-        window.setTimeout(() => setScreenshotLabel(null), 900);
-        break;
-      case "url":
-        if (e.url) setIframeUrl(e.url);
-        break;
-      case "log":
-        // surfaced via run loop log
-        break;
-    }
-  };
-
-  const run = async () => {
-    if (!iframeRef.current) {
-      toast.error("Live preview not ready yet");
-      return;
-    }
-    setExpanded(true);
-    cancelRef.current = { current: false };
-    setRunning(true);
-    setResult({ status: "running", completedSteps: 0, totalSteps: test.steps.length, log: [] });
-    setActiveStep(0);
-    setHighlight(null);
-    setCursor(null);
-
-    // Snapshot first if scenario mutates
-    let snap = null;
-    if (scenario.mutates) {
-      try {
-        snap = await snapshotTasks();
-      } catch (e) {
-        console.warn("snapshot failed", e);
-      }
-    }
-
-    const driver = new LiveDriver({
-      iframe: iframeRef.current,
-      origin: window.location.origin,
-      onEvent: handleEvent,
-      cancelRef: cancelRef.current,
-    });
-    driverRef.current = driver;
-
-    const log: string[] = [];
-    const t0 = performance.now();
-
-    // Track which scenario step we're on based on cmd index ranges
-    const stepRanges = scenario.stepRanges;
-    let currentStepIdx = 0;
-    let firstFailureStep: number | null = null;
-
-    // We run commands one-by-one to update activeStep accurately
-    let outcomeStatus: TestStatus = "pass";
-    for (let i = 0; i < scenario.cmds.length; i++) {
-      if (cancelRef.current.current) break;
-
-      // advance step pointer
-      while (currentStepIdx < stepRanges.length && i > stepRanges[currentStepIdx].end) {
-        currentStepIdx++;
-      }
-      if (
-        currentStepIdx < stepRanges.length &&
-        i >= stepRanges[currentStepIdx].start &&
-        i <= stepRanges[currentStepIdx].end
-      ) {
-        setActiveStep(currentStepIdx);
-      }
-
-      const cmd = scenario.cmds[i];
-      try {
-        await driver.runOne(cmd);
-        if (cmd.kind !== "log" && cmd.kind !== "wait") {
-          log.push(`✓ ${describeCmd(cmd)}`);
-        }
-      } catch (err) {
-        const msg = (err as Error).message;
-        log.push(`✗ ${describeCmd(cmd)} — ${msg}`);
-        outcomeStatus = "fail";
-        firstFailureStep = currentStepIdx;
-        break;
-      }
-
-      // mark completed step on the boundary
-      if (currentStepIdx < stepRanges.length && i === stepRanges[currentStepIdx].end) {
-        setResult((r) =>
-          r
-            ? {
-                ...r,
-                completedSteps: currentStepIdx + 1,
-                durationMs: Math.round(performance.now() - t0),
-                log: [...log],
-              }
-            : r,
-        );
-      }
-    }
-
-    const elapsed = Math.round(performance.now() - t0);
-
-    // Rollback
-    if (snap) {
-      try {
-        const rb = await rollbackTasks(snap);
-        const summary = `rollback: deleted ${rb.deleted}, restored ${rb.restored}${rb.errors.length ? `, errors: ${rb.errors.length}` : ""}`;
-        setRollbackInfo(summary);
-        log.push(`↺ ${summary}`);
-      } catch (e) {
-        const msg = (e as Error).message;
-        setRollbackInfo(`rollback failed: ${msg}`);
-        log.push(`✗ rollback failed: ${msg}`);
-      }
-    }
-
-    setResult({
-      status: cancelRef.current.current ? "skipped" : outcomeStatus,
-      completedSteps: firstFailureStep ?? test.steps.length,
-      totalSteps: test.steps.length,
-      durationMs: elapsed,
-      log,
-    });
-    setRunning(false);
-    setHighlight(null);
-  };
-
-  const stop = () => {
-    cancelRef.current.current = true;
-    driverRef.current?.cancel();
-    setRunning(false);
-  };
-
-  const reset = () => {
-    cancelRef.current.current = true;
-    setResult(null);
-    setActiveStep(-1);
-    setHighlight(null);
-    setCursor(null);
-    setRollbackInfo(null);
-  };
-
-  const finalStatus = result?.status;
+  const totalMs = useMemo(
+    () => test.steps.reduce((acc, s) => acc + (s.ms ?? 0), 0),
+    [test],
+  );
+  const lineCount = useMemo(() => test.code.split("\n").length, [test.code]);
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Left: live iframe preview */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-              <Monitor className="h-3.5 w-3.5" /> Live preview (real app)
-            </h4>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-[10px]">
-                {scenario.mutates ? "mutates · auto-rollback" : "read-only"}
-              </Badge>
-              <Badge variant="outline" className="text-[10px] font-mono">
-                {iframeUrl}
-              </Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2"
-                onClick={() => setExpanded((v) => !v)}
-                data-testid="toggle-expand-preview"
-                aria-label={expanded ? "Minimize preview" : "Maximize preview"}
-              >
-                {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-
-          {/*
-            The LiveBrowser is wrapped in a div whose styles flip between
-            inline and a fixed-position overlay sized to 75% of the viewport.
-            This keeps the same iframe element mounted (driver keeps its ref).
-          */}
-          {expanded && (
-            <div
-              className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm animate-fade-in"
-              onClick={() => !running && setExpanded(false)}
-              data-testid="preview-modal-backdrop"
-            />
-          )}
-          <div
-            className={cn(
-              expanded
-                ? "fixed left-1/2 top-1/2 z-[101] w-[75vw] h-[75vh] -translate-x-1/2 -translate-y-1/2 shadow-2xl rounded-xl overflow-hidden ring-2 ring-primary/40"
-                : "relative",
-            )}
-            data-testid="preview-stage"
-          >
-            <LiveBrowser
-              url={iframeUrl}
-              highlight={highlight}
-              cursor={cursor}
-              flashKey={flashKey}
-              screenshotLabel={screenshotLabel}
-              recording={running}
-              onIframeReady={onIframeReady}
-              className={expanded ? "h-full !aspect-auto" : ""}
-            />
-            {expanded && (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="absolute right-3 top-12 z-10 h-7 px-2 shadow"
-                onClick={() => setExpanded(false)}
-                data-testid="close-preview-modal"
-              >
-                <Minimize2 className="mr-1 h-3.5 w-3.5" /> Close
-              </Button>
-            )}
-          </div>
-
+    <div className="space-y-6">
+      {/* Code block — full width, expanded */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+            <FileCode className="h-3.5 w-3.5" /> Test source
+          </h4>
           <div className="flex items-center gap-2">
-            {!running ? (
-              <Button size="sm" onClick={run} data-testid={`run-${test.id}`} className="shadow-elegant">
-                <Play className="mr-1 h-3 w-3" /> {result ? "Replay on live app" : "Run on live app"}
-              </Button>
-            ) : (
-              <Button size="sm" variant="destructive" onClick={stop}>
-                <Square className="mr-1 h-3 w-3" /> Stop
-              </Button>
-            )}
-            {result && !running && (
-              <Button size="sm" variant="ghost" onClick={reset}>
-                <RefreshCw className="mr-1 h-3 w-3" /> Reset
-              </Button>
-            )}
-            {result?.durationMs !== undefined && (
-              <span className="ml-auto font-mono text-xs text-muted-foreground">
-                {(result.durationMs / 1000).toFixed(2)}s · {result.completedSteps}/
-                {result.totalSteps} steps
-              </span>
-            )}
+            <Badge variant="outline" className="text-[10px] font-mono">
+              tests/{test.id}.spec.ts
+            </Badge>
+            <Badge variant="secondary" className="text-[10px] font-mono">
+              {lineCount} lines
+            </Badge>
+            {test.tags.slice(0, 3).map((t) => (
+              <Badge key={t} variant="outline" className="text-[10px] font-mono">
+                {t}
+              </Badge>
+            ))}
           </div>
-          {finalStatus && (
-            <div
-              className={cn(
-                "flex items-center gap-2 rounded-md border px-3 py-2 text-sm",
-                finalStatus === "pass" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700",
-                finalStatus === "fail" && "border-destructive/40 bg-destructive/10 text-destructive",
-                finalStatus === "flaky" && "border-amber-500/40 bg-amber-500/10 text-amber-700",
-                finalStatus === "running" && "border-primary/40 bg-primary/10 text-primary",
-                finalStatus === "skipped" && "border-muted-foreground/30 bg-muted/40 text-muted-foreground",
-              )}
-            >
-              <StatusIcon status={finalStatus} pulse={finalStatus === "running"} />
-              <span className="font-medium">{labelFor(finalStatus)}</span>
-              {rollbackInfo && (
-                <span className="ml-auto text-[11px] font-mono opacity-80">{rollbackInfo}</span>
-              )}
-            </div>
-          )}
         </div>
+        <CodeBlock code={test.code} filename={`tests/${test.id}.spec.ts`} />
+      </div>
 
-        {/* Right: code + steps */}
-        <div className="space-y-3">
-          <CodeBlock code={test.code} filename={`tests/${test.id}.spec.ts`} />
-          <div>
-            <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-              <ListChecks className="h-3.5 w-3.5" /> Execution steps
-            </h4>
-            <ol className="space-y-1.5 text-sm">
-              {test.steps.map((s, i) => {
-                const done = result ? i < result.completedSteps : false;
-                const current = activeStep === i && running;
-                return (
-                  <li
-                    key={i}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md border bg-card/50 px-3 py-1.5 transition",
-                      current && "border-primary bg-primary/5 shadow-sm",
-                      done && !current && "border-emerald-500/30 bg-emerald-500/5",
-                    )}
-                  >
-                    <span className="w-4">
-                      {current ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                      ) : done ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      ) : (
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                      )}
-                    </span>
-                    <span className="flex-1">{s.label}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
+      {/* Execution steps — full width, richer layout */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
+            <ListChecks className="h-3.5 w-3.5" /> Execution steps
+          </h4>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-[10px] font-mono">
+              {test.steps.length} steps
+            </Badge>
+            <Badge variant="outline" className="text-[10px] font-mono">
+              ~{totalMs}ms total
+            </Badge>
+          </div>
+        </div>
+        <ol className="grid gap-2 md:grid-cols-2">
+          {test.steps.map((s, i) => {
+            const pct = totalMs > 0 ? Math.round(((s.ms ?? 0) / totalMs) * 100) : 0;
+            return (
+              <li
+                key={i}
+                className="flex items-start gap-3 rounded-md border bg-card/50 px-3 py-2.5 transition hover:border-primary/40 hover:bg-card"
+              >
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-[10px] font-semibold text-primary">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium leading-tight">{s.label}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground whitespace-nowrap">
                       ~{s.ms}ms
                     </span>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-          {result && result.log.length > 0 && (
-            <pre className="max-h-40 overflow-auto rounded-md bg-zinc-950 p-2.5 text-[11px] leading-snug text-zinc-200">
-              {result.log.join("\n")}
-            </pre>
-          )}
-        </div>
+                  </div>
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary/60"
+                      style={{ width: `${Math.max(pct, 4)}%` }}
+                    />
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </div>
   );
