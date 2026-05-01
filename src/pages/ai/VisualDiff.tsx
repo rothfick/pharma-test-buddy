@@ -73,11 +73,17 @@ export default function VisualDiff() {
     }
     setLoading(true);
     setResult(null);
+    const startedAt = Date.now();
+    const tick = setInterval(() => {
+      // Force re-render by updating dummy — handled via loading text below
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 500);
     try {
       const { data, error } = await supabase.functions.invoke("llm-gateway", {
         body: {
           feature: "visual-diff",
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-3-flash-preview",
+          fallbacks: ["google/gemini-2.5-flash", "google/gemini-2.5-pro"],
           messages: [
             {
               role: "system",
