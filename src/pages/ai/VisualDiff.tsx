@@ -64,7 +64,9 @@ export default function VisualDiff() {
   const [baseline, setBaseline] = useState<string | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<VerdictResult | null>(null);
+  const [usedModel, setUsedModel] = useState<string | null>(null);
 
   const compare = async () => {
     if (!baseline || !current) {
@@ -73,11 +75,17 @@ export default function VisualDiff() {
     }
     setLoading(true);
     setResult(null);
+    setElapsed(0);
+    const startedAt = Date.now();
+    const tick = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 500);
     try {
       const { data, error } = await supabase.functions.invoke("llm-gateway", {
         body: {
           feature: "visual-diff",
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-3-flash-preview",
+          fallbacks: ["google/gemini-2.5-flash", "google/gemini-2.5-pro"],
           messages: [
             {
               role: "system",
@@ -119,11 +127,16 @@ export default function VisualDiff() {
       });
       if (error) throw error;
       const call = (data as any)?.choices?.[0]?.message?.tool_calls?.[0];
-      if (!call?.function?.arguments) throw new Error("Model did not return verdict");
+      if (!call?.function?.arguments) {
+        throw new Error("Model nie zwrócił werdyktu — spróbuj ponownie");
+      }
+      setUsedModel((data as any)?.model ?? null);
       setResult(JSON.parse(call.function.arguments));
+      toast.success("Porównanie gotowe");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Comparison failed");
     } finally {
+      clearInterval(tick);
       setLoading(false);
     }
   };
@@ -150,9 +163,14 @@ export default function VisualDiff() {
             data-testid="vdiff-compare"
           >
             {loading
-              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Comparing…</>
+              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analiza obrazów… {elapsed}s</>
               : <><ImageIcon className="mr-2 h-4 w-4" /> Compare</>}
           </Button>
+          {loading && (
+            <p className="text-xs text-muted-foreground">
+              Multimodalne LLM analizuje screenshoty (zwykle 3–15s).
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -160,6 +178,9 @@ export default function VisualDiff() {
         <Card data-testid="vdiff-result">
           <CardHeader>
             <CardTitle className="text-base">Verdict</CardTitle>
+            {usedModel && (
+              <CardDescription className="text-xs">model: {usedModel}</CardDescription>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
