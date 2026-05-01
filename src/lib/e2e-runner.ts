@@ -122,9 +122,12 @@ async function openFirstTestDetail(
   container: HTMLDivElement,
   log: (line: string) => void,
 ): Promise<void> {
-  // Tabs use role=tab; pick the catalog tab by its visible text.
-  const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
-  const catalogTab = tabs.find((t) => /test catalog/i.test(t.textContent ?? ""));
+  // Tabs use role=tab; pick the catalog tab via its stable test-id.
+  const catalogTab =
+    container.querySelector<HTMLElement>('[data-testid="tab-catalog"]') ??
+    Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find((t) =>
+      /test catalog/i.test(t.textContent ?? ""),
+    );
   if (catalogTab) {
     catalogTab.click();
     await tick(80);
