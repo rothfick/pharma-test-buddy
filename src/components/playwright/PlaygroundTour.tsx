@@ -148,17 +148,16 @@ export function PlaygroundTour() {
     cancelRef.current = { current: false };
     pushLog({ text: `▶ Playground tour starting (${TOUR_TOTAL_STEPS} steps, ${TOUR_TOTAL_CMDS} commands)`, kind: "system" });
 
-    // Snapshot for rollback.
-    pushLog({ text: "📸 Snapshotting tasks for rollback…", kind: "system" });
-    const snap = await snapshotTasks();
-    if (snap) pushLog({ text: `   captured ${snap.rows.length} task rows`, kind: "info" });
-    else pushLog({ text: "   no snapshot (not authenticated or no tasks)", kind: "info" });
-
-    // Optionally start recording.
+    // ── Recording must start FIRST, synchronously from the click, so that
+    // browsers without iframe.captureStream (Safari/Firefox) can fall back to
+    // getDisplayMedia() which requires an active user gesture.
     if (recordEnabled) {
       try {
         const rec = new ScreenRecorder();
-        await rec.start({ iframe: iframeRef.current });
+        await rec.start({
+          iframe: iframeRef.current,
+          allowDisplayMediaFallback: true,
+        });
         recorderRef.current = rec;
         setRecording(true);
         pushLog({ text: "🎥 Recording started", kind: "system" });
@@ -168,6 +167,13 @@ export function PlaygroundTour() {
         pushLog({ text: `⚠ Recording skipped: ${msg}`, kind: "system" });
       }
     }
+
+    // Snapshot for rollback (after recording so the gesture isn't consumed first).
+    pushLog({ text: "📸 Snapshotting tasks for rollback…", kind: "system" });
+    const snap = await snapshotTasks();
+    if (snap) pushLog({ text: `   captured ${snap.rows.length} task rows`, kind: "info" });
+    else pushLog({ text: "   no snapshot (not authenticated or no tasks)", kind: "info" });
+
 
     // Navigate iframe to first page (sign-in) so the LiveDriver has something to attach to.
     setIframeUrl("/auth");
