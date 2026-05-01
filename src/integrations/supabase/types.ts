@@ -157,6 +157,87 @@ export type Database = {
         }
         Relationships: []
       }
+      coverage_snapshots: {
+        Row: {
+          branch: string | null
+          branch_coverage: number
+          commit_sha: string | null
+          covered_lines: number
+          created_at: string
+          function_coverage: number
+          id: string
+          line_coverage: number
+          metadata: Json
+          statement_coverage: number
+          total_lines: number
+        }
+        Insert: {
+          branch?: string | null
+          branch_coverage?: number
+          commit_sha?: string | null
+          covered_lines?: number
+          created_at?: string
+          function_coverage?: number
+          id?: string
+          line_coverage?: number
+          metadata?: Json
+          statement_coverage?: number
+          total_lines?: number
+        }
+        Update: {
+          branch?: string | null
+          branch_coverage?: number
+          commit_sha?: string | null
+          covered_lines?: number
+          created_at?: string
+          function_coverage?: number
+          id?: string
+          line_coverage?: number
+          metadata?: Json
+          statement_coverage?: number
+          total_lines?: number
+        }
+        Relationships: []
+      }
+      dora_metrics: {
+        Row: {
+          change_failure_rate: number
+          created_at: string
+          deployment_count: number
+          environment: string
+          id: string
+          lead_time_minutes: number
+          metadata: Json
+          metric_date: string
+          mttr_minutes: number
+          service: string
+        }
+        Insert: {
+          change_failure_rate?: number
+          created_at?: string
+          deployment_count?: number
+          environment?: string
+          id?: string
+          lead_time_minutes?: number
+          metadata?: Json
+          metric_date: string
+          mttr_minutes?: number
+          service?: string
+        }
+        Update: {
+          change_failure_rate?: number
+          created_at?: string
+          deployment_count?: number
+          environment?: string
+          id?: string
+          lead_time_minutes?: number
+          metadata?: Json
+          metric_date?: string
+          mttr_minutes?: number
+          service?: string
+        }
+        Relationships: []
+      }
       e_signatures: {
         Row: {
           action: string
@@ -225,6 +306,48 @@ export type Database = {
           enabled?: boolean
           feature?: string
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      flaky_tests: {
+        Row: {
+          created_at: string
+          failure_count: number
+          id: string
+          last_failed_at: string
+          owner: string | null
+          root_cause: string | null
+          status: string
+          suite_name: string
+          test_name: string
+          total_runs: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          failure_count?: number
+          id?: string
+          last_failed_at?: string
+          owner?: string | null
+          root_cause?: string | null
+          status?: string
+          suite_name: string
+          test_name: string
+          total_runs?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          failure_count?: number
+          id?: string
+          last_failed_at?: string
+          owner?: string | null
+          root_cause?: string | null
+          status?: string
+          suite_name?: string
+          test_name?: string
+          total_runs?: number
           updated_at?: string
         }
         Relationships: []
@@ -533,6 +656,63 @@ export type Database = {
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      test_runs: {
+        Row: {
+          branch: string | null
+          ci_provider: string | null
+          commit_sha: string | null
+          created_at: string
+          duration_ms: number
+          failed: number
+          flaky: number
+          id: string
+          metadata: Json
+          passed: number
+          pipeline_url: string | null
+          run_type: string
+          skipped: number
+          status: string
+          suite_name: string
+          total: number
+        }
+        Insert: {
+          branch?: string | null
+          ci_provider?: string | null
+          commit_sha?: string | null
+          created_at?: string
+          duration_ms?: number
+          failed?: number
+          flaky?: number
+          id?: string
+          metadata?: Json
+          passed?: number
+          pipeline_url?: string | null
+          run_type: string
+          skipped?: number
+          status?: string
+          suite_name: string
+          total?: number
+        }
+        Update: {
+          branch?: string | null
+          ci_provider?: string | null
+          commit_sha?: string | null
+          created_at?: string
+          duration_ms?: number
+          failed?: number
+          flaky?: number
+          id?: string
+          metadata?: Json
+          passed?: number
+          pipeline_url?: string | null
+          run_type?: string
+          skipped?: number
+          status?: string
+          suite_name?: string
+          total?: number
         }
         Relationships: []
       }
