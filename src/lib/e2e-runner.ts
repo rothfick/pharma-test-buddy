@@ -522,13 +522,13 @@ const CASES: E2ECase[] = [
         assert(btn, "Run manually button not found");
         btn.click();
         await tick(120);
-        let dialog = document.querySelector('[role="dialog"]');
+        let dialog = m.doc.querySelector('[role="dialog"]');
         assert(dialog, "dialog did not open");
-        document.dispatchEvent(
+        m.doc.dispatchEvent(
           new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
         );
         await tick(150);
-        dialog = document.querySelector('[role="dialog"]');
+        dialog = m.doc.querySelector('[role="dialog"]');
         assert(!dialog, "dialog still present after Escape");
         log("dialog dismissed via Escape");
       } finally {
