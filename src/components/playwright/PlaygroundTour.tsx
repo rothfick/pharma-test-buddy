@@ -301,6 +301,7 @@ export function PlaygroundTour() {
     }
     setRecording(false);
     setRunning(false);
+    setExpanded(false);
   }
 
   // Group steps by page for the right-hand panel.
