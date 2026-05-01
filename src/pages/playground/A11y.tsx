@@ -11,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ChallengeGrid } from "@/components/playground/ChallengeCard";
+import { challengesByCategory } from "@/lib/playground-challenges";
 
 type Lang = "pl" | "en" | "ar";
 
@@ -45,6 +47,7 @@ export default function A11y() {
   const [lang, setLang] = useState<Lang>("pl");
   const t = dict[lang];
   const dir = lang === "ar" ? "rtl" : "ltr";
+  const bonus = challengesByCategory("a11y");
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -140,6 +143,11 @@ export default function A11y() {
           </div>
         </CardContent>
       </Card>
+
+      <section className="space-y-3" data-testid="a11y-bonus">
+        <h2 className="text-lg font-semibold">Bonus challenges ({bonus.length})</h2>
+        <ChallengeGrid items={bonus} />
+      </section>
     </div>
   );
 }
