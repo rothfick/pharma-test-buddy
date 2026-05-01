@@ -27,6 +27,8 @@ type Sig = {
 export default function ESignatures() {
   const [sigs, setSigs] = useState<Sig[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isOAuth, setIsOAuth] = useState(false);
+  const [provider, setProvider] = useState<string>("email");
   const [form, setForm] = useState({
     entity_type: "task",
     entity_id: "",
@@ -34,6 +36,7 @@ export default function ESignatures() {
     meaning: "approval",
     reason: "",
     password: "",
+    confirmation: "",
     witness_email: "",
   });
   const [submitting, setSubmitting] = useState(false);
