@@ -64,7 +64,9 @@ export default function VisualDiff() {
   const [baseline, setBaseline] = useState<string | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<VerdictResult | null>(null);
+  const [usedModel, setUsedModel] = useState<string | null>(null);
 
   const compare = async () => {
     if (!baseline || !current) {
@@ -73,9 +75,9 @@ export default function VisualDiff() {
     }
     setLoading(true);
     setResult(null);
+    setElapsed(0);
     const startedAt = Date.now();
     const tick = setInterval(() => {
-      // Force re-render by updating dummy — handled via loading text below
       setElapsed(Math.floor((Date.now() - startedAt) / 1000));
     }, 500);
     try {
@@ -125,11 +127,16 @@ export default function VisualDiff() {
       });
       if (error) throw error;
       const call = (data as any)?.choices?.[0]?.message?.tool_calls?.[0];
-      if (!call?.function?.arguments) throw new Error("Model did not return verdict");
+      if (!call?.function?.arguments) {
+        throw new Error("Model nie zwrócił werdyktu — spróbuj ponownie");
+      }
+      setUsedModel((data as any)?.model ?? null);
       setResult(JSON.parse(call.function.arguments));
+      toast.success("Porównanie gotowe");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Comparison failed");
     } finally {
+      clearInterval(tick);
       setLoading(false);
     }
   };
