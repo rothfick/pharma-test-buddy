@@ -461,6 +461,98 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_runs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          input: Json
+          output: Json | null
+          status: string
+          steps: Json
+          total_cost_usd: number
+          total_tokens: number
+          updated_at: string
+          user_id: string | null
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input?: Json
+          output?: Json | null
+          status?: string
+          steps?: Json
+          total_cost_usd?: number
+          total_tokens?: number
+          updated_at?: string
+          user_id?: string | null
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input?: Json
+          output?: Json | null
+          status?: string
+          steps?: Json
+          total_cost_usd?: number
+          total_tokens?: number
+          updated_at?: string
+          user_id?: string | null
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          edges: Json
+          id: string
+          is_active: boolean
+          name: string
+          nodes: Json
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          edges?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          nodes?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          edges?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          nodes?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
