@@ -21,7 +21,7 @@ const INJECTION_PATTERNS = [
   /disregard (?:all |the )?(?:previous|above|prior)/i,
   /you are (?:now |actually )?(?:DAN|jailbroken|unrestricted)/i,
   /system\s*[:>]\s*you (?:are|must|should)/i,
-  /</?\|?(?:im_start|im_end|system|assistant)\|?>/i,
+  new RegExp("<\\/?\\|?(?:im_start|im_end|system|assistant)\\|?>", "i"),
   /print (?:your |the )?(?:system )?prompt/i,
   /reveal (?:your |the )?instructions/i,
   /forget everything/i,
