@@ -117,21 +117,80 @@ async function runHTTP(node: WFNode, ctx: Record<string, unknown>) {
   return { output: data, status: res.status };
 }
 
-function runTransform(node: WFNode, ctx: Record<string, unknown>) {
-  const cfg = node.config as any;
-  const expr = String(cfg.expression ?? "input");
-  // Sandboxed evaluation — only `ctx` is exposed
-  // deno-lint-ignore no-new-func
-  const fn = new Function("ctx", `"use strict"; return (${expr});`);
-  return { output: fn(ctx) };
+// Safe path resolver: read "a.b.c" from ctx, no code execution.
+function readPath(ctx: Record<string, unknown>, path: string): unknown {
+  if (!path) return ctx;
+  const parts = path.split(".");
+  let cur: any = ctx;
+  for (const p of parts) {
+    if (cur == null) return undefined;
+    cur = cur[p];
+  }
+  return cur;
 }
 
+// Whitelisted transform operations — replaces unsafe new Function() eval.
+// Config shape: { op: "pick"|"pluck"|"filter_eq"|"map_field"|"length"|"identity"|"concat"|"json_parse",
+//                 source?: string, field?: string, value?: unknown, sources?: string[] }
+function runTransform(node: WFNode, ctx: Record<string, unknown>) {
+  const cfg = (node.config ?? {}) as any;
+  const op = String(cfg.op ?? "identity");
+  const src = readPath(ctx, String(cfg.source ?? "input"));
+
+  switch (op) {
+    case "identity":
+      return { output: src };
+    case "pick": {
+      const field = String(cfg.field ?? "");
+      return { output: src && typeof src === "object" ? (src as any)[field] : undefined };
+    }
+    case "pluck": {
+      const field = String(cfg.field ?? "");
+      return { output: Array.isArray(src) ? src.map((r: any) => r?.[field]) : [] };
+    }
+    case "filter_eq": {
+      const field = String(cfg.field ?? "");
+      const value = cfg.value;
+      return { output: Array.isArray(src) ? src.filter((r: any) => r?.[field] === value) : [] };
+    }
+    case "length":
+      return { output: Array.isArray(src) ? src.length : (src && typeof src === "object" ? Object.keys(src as any).length : 0) };
+    case "concat": {
+      const parts = Array.isArray(cfg.sources) ? cfg.sources.map((p: string) => readPath(ctx, p)) : [];
+      return { output: parts.map((p) => (p == null ? "" : String(p))).join(String(cfg.separator ?? "")) };
+    }
+    case "json_parse":
+      try { return { output: JSON.parse(String(src ?? "")) }; } catch { return { output: null }; }
+    default:
+      throw new Error(`Unsupported transform op: ${op}`);
+  }
+}
+
+// Whitelisted condition: { op: "eq"|"neq"|"gt"|"gte"|"lt"|"lte"|"truthy"|"includes",
+//                          left: string (path), right?: unknown }
 function runCondition(node: WFNode, ctx: Record<string, unknown>) {
-  const cfg = node.config as any;
-  const expr = String(cfg.expression ?? "true");
-  // deno-lint-ignore no-new-func
-  const fn = new Function("ctx", `"use strict"; return Boolean(${expr});`);
-  const branch = fn(ctx) ? "true" : "false";
+  const cfg = (node.config ?? {}) as any;
+  const op = String(cfg.op ?? "truthy");
+  const left = readPath(ctx, String(cfg.left ?? "input"));
+  const right = cfg.right;
+  let result = false;
+  switch (op) {
+    case "truthy": result = Boolean(left); break;
+    case "eq": result = left === right; break;
+    case "neq": result = left !== right; break;
+    case "gt": result = Number(left) > Number(right); break;
+    case "gte": result = Number(left) >= Number(right); break;
+    case "lt": result = Number(left) < Number(right); break;
+    case "lte": result = Number(left) <= Number(right); break;
+    case "includes":
+      result = Array.isArray(left)
+        ? left.includes(right)
+        : typeof left === "string" ? left.includes(String(right)) : false;
+      break;
+    default:
+      throw new Error(`Unsupported condition op: ${op}`);
+  }
+  const branch = result ? "true" : "false";
   return { output: branch, branch };
 }
 
