@@ -9,7 +9,14 @@ import { AppLayout } from "@/components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Wizard from "./pages/Wizard";
-import Playground from "./pages/Playground";
+import PlaygroundLayout from "./pages/playground/PlaygroundLayout";
+import PlaygroundOverview from "./pages/playground/Overview";
+import PlaygroundInteractions from "./pages/playground/Interactions";
+import PlaygroundAsync from "./pages/playground/Async";
+import PlaygroundFiles from "./pages/playground/Files";
+import PlaygroundSecurity from "./pages/playground/Security";
+import PlaygroundA11y from "./pages/playground/A11y";
+import PlaygroundLegacy from "./pages/playground/Legacy";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -35,7 +42,15 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/wizard" element={<Wizard />} />
-              <Route path="/playground" element={<Playground />} />
+              <Route path="/playground" element={<PlaygroundLayout />}>
+                <Route index element={<PlaygroundOverview />} />
+                <Route path="interactions" element={<PlaygroundInteractions />} />
+                <Route path="async" element={<PlaygroundAsync />} />
+                <Route path="files" element={<PlaygroundFiles />} />
+                <Route path="security" element={<PlaygroundSecurity />} />
+                <Route path="a11y" element={<PlaygroundA11y />} />
+                <Route path="legacy" element={<PlaygroundLegacy />} />
+              </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>
             <Route path="*" element={<NotFound />} />
