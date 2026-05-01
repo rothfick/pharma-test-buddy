@@ -491,16 +491,15 @@ const CASES: E2ECase[] = [
         assert(btn, "Run manually button not found");
         btn.click();
         await tick(120);
-        let dialog = document.querySelector('[role="dialog"]');
+        let dialog = m.doc.querySelector('[role="dialog"]');
         assert(dialog, "dialog did not open");
-        // Find a button labelled "Close" inside the dialog
         const closeBtn = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button")).find(
           (b) => /^\s*close\s*$/i.test(b.textContent ?? ""),
         );
         assert(closeBtn, "Close button not found");
         closeBtn.click();
         await tick(120);
-        dialog = document.querySelector('[role="dialog"]');
+        dialog = m.doc.querySelector('[role="dialog"]');
         assert(!dialog, "dialog still present after Close");
         log("dialog closed via Close button");
       } finally {
