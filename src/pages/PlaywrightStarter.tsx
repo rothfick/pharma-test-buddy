@@ -192,7 +192,7 @@ export default function PlaywrightStarter() {
             E2E Tests ({E2E_TOTAL_TESTS})
           </TabsTrigger>
           <TabsTrigger value="tour" data-testid="tab-tour">
-            Playground Tour ({TOUR_TOTAL_STEPS})
+            Playground Tour ({FULL_SUITE_TOTAL_STEPS})
           </TabsTrigger>
         </TabsList>
 
