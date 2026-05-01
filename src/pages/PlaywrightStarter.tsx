@@ -43,6 +43,10 @@ import {
 } from "@/lib/playwright-tests";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
 import { supabase } from "@/integrations/supabase/client";
+import { LiveBrowser, type HighlightRect } from "@/components/playwright/LiveBrowser";
+import { LiveDriver, type DriverEvent } from "@/lib/live-driver";
+import { buildScenario } from "@/lib/live-scenarios";
+import { snapshotTasks, rollbackTasks } from "@/lib/live-rollback";
 import { cn } from "@/lib/utils";
 
 type RunStatus = TestStatus | "running" | "queued" | "idle";
