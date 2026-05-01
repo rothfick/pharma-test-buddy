@@ -5,6 +5,7 @@
 // minimal and the global runner snapshots/restores tasks regardless.
 
 import type { Cmd } from "./live-driver";
+import { CHALLENGES, type Challenge, CATEGORY_LABELS } from "./playground-challenges";
 
 export interface TourStep {
   /** Title shown in the live log. */
