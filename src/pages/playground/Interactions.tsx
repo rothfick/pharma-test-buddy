@@ -16,7 +16,11 @@ import {
 } from "@/components/ui/hover-card";
 import { GripVertical } from "lucide-react";
 
+import { ChallengeGrid } from "@/components/playground/ChallengeCard";
+import { challengesByCategory } from "@/lib/playground-challenges";
+
 export default function Interactions() {
+  const bonus = challengesByCategory("interactions");
   return (
     <div className="space-y-6" data-testid="interactions-page">
       <DragAndDrop />
@@ -25,6 +29,10 @@ export default function Interactions() {
       <RightClickMenu />
       <CanvasDrawing />
       <PrecisionSlider />
+      <section className="space-y-3" data-testid="interactions-bonus">
+        <h2 className="text-lg font-semibold">Bonus challenges ({bonus.length})</h2>
+        <ChallengeGrid items={bonus} />
+      </section>
     </div>
   );
 }
