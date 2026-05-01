@@ -169,8 +169,8 @@ export function PlaygroundTour() {
       }
     }
 
-    // Navigate iframe to first page so the LiveDriver has something to attach to.
-    setIframeUrl("/playground");
+    // Navigate iframe to first page (sign-in) so the LiveDriver has something to attach to.
+    setIframeUrl("/auth");
     await new Promise((r) => setTimeout(r, 800));
 
     if (!iframeRef.current) {
