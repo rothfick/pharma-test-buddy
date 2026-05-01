@@ -33,6 +33,12 @@ import AIPromptPlayground from "./pages/ai/PromptPlayground";
 import AICostTracker from "./pages/ai/CostTracker";
 import AISyntheticData from "./pages/ai/SyntheticData";
 import AIWorkflowBuilder from "./pages/ai/WorkflowBuilder";
+import ComplianceLayout from "./pages/compliance/ComplianceLayout";
+import ComplianceOverview from "./pages/compliance/Overview";
+import AuditTrail from "./pages/compliance/AuditTrail";
+import ESignatures from "./pages/compliance/ESignatures";
+import DataIntegrity from "./pages/compliance/DataIntegrity";
+import Validation from "./pages/compliance/Validation";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -82,6 +88,13 @@ const App = () => (
                 <Route path="cost-tracker" element={<AICostTracker />} />
                 <Route path="synthetic-data" element={<AISyntheticData />} />
                 <Route path="workflow-builder" element={<AIWorkflowBuilder />} />
+              </Route>
+              <Route path="/compliance" element={<ComplianceLayout />}>
+                <Route index element={<ComplianceOverview />} />
+                <Route path="audit-trail" element={<AuditTrail />} />
+                <Route path="e-signatures" element={<ESignatures />} />
+                <Route path="data-integrity" element={<DataIntegrity />} />
+                <Route path="validation" element={<Validation />} />
               </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>
