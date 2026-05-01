@@ -37,7 +37,7 @@ import { snapshotTasks, rollbackTasks } from "@/lib/live-rollback";
 import {
   PLAYGROUND_TOUR,
   TOUR_TOTAL_STEPS,
-  TOUR_TOTAL_CMDS,
+  
   CATALOG_SUITE_STEPS,
   CATALOG_SUITE_TOTAL,
   FULL_SUITE_STEPS,
