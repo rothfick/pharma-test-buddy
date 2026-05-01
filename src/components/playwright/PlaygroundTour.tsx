@@ -207,13 +207,13 @@ export function PlaygroundTour() {
     const t0 = performance.now();
     let firstFailure = -1;
 
-    for (let i = 0; i < PLAYGROUND_TOUR.length; i++) {
+    for (let i = 0; i < FULL_SUITE_STEPS.length; i++) {
       if (cancelRef.current.current) break;
-      const step = PLAYGROUND_TOUR[i];
+      const step = FULL_SUITE_STEPS[i];
       setActiveIdx(i);
       setStatuses((p) => ({ ...p, [i]: "running" }));
       pushLog({
-        text: `→ [${i + 1}/${TOUR_TOTAL_STEPS}] ${PAGE_LABELS[step.page] ?? step.page} · ${step.label}`,
+        text: `→ [${i + 1}/${FULL_SUITE_TOTAL_STEPS}] ${PAGE_LABELS[step.page] ?? step.page} · ${step.label}`,
         kind: "info",
       });
 
