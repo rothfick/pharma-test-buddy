@@ -486,6 +486,7 @@ function RunWithPreview({ test }: { test: PwTest }) {
       toast.error("Live preview not ready yet");
       return;
     }
+    setExpanded(true);
     cancelRef.current = { current: false };
     setRunning(true);
     setResult({ status: "running", completedSteps: 0, totalSteps: test.steps.length, log: [] });
