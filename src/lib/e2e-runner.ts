@@ -526,38 +526,69 @@ export interface RunHandle {
   done: Promise<void>;
 }
 
+// While the E2E suite runs we mount real React trees that include Radix
+// dialogs. Radix portals into document.body, so even though the host
+// container is positioned off-screen the dialog/overlay would briefly flash
+// in the middle of the viewport. We hide every portal-rendered surface with
+// a scoped <style> tag that is only active for the duration of the run.
+const E2E_HIDE_STYLE_ID = "e2e-hide-portals";
+function installPortalShield() {
+  if (document.getElementById(E2E_HIDE_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = E2E_HIDE_STYLE_ID;
+  style.textContent = `
+    html.e2e-running [data-radix-portal],
+    html.e2e-running [data-radix-popper-content-wrapper],
+    html.e2e-running [data-state][role="dialog"],
+    html.e2e-running [data-radix-dialog-overlay],
+    html.e2e-running [data-sonner-toaster],
+    html.e2e-running [data-e2e-mount] {
+      visibility: hidden !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export function runE2E(opts: {
   cases?: E2ECase[];
   onEvent: (e: E2EEvent) => void;
 }): RunHandle {
   const list = opts.cases ?? CASES;
   let cancelled = false;
+  installPortalShield();
+  document.documentElement.classList.add("e2e-running");
   const done = (async () => {
-    for (const c of list) {
-      if (cancelled) break;
-      const start = performance.now();
-      opts.onEvent({ type: "case-start", caseId: c.id, status: "running" });
-      try {
-        await c.run((line) => opts.onEvent({ type: "log", caseId: c.id, message: line }));
-        opts.onEvent({
-          type: "case-end",
-          caseId: c.id,
-          status: "pass",
-          durationMs: Math.round(performance.now() - start),
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        const isSkip = msg === "__skip__";
-        opts.onEvent({
-          type: "case-end",
-          caseId: c.id,
-          status: isSkip ? "skipped" : "fail",
-          durationMs: Math.round(performance.now() - start),
-          error: isSkip ? undefined : msg,
-        });
+    try {
+      for (const c of list) {
+        if (cancelled) break;
+        const start = performance.now();
+        opts.onEvent({ type: "case-start", caseId: c.id, status: "running" });
+        try {
+          await c.run((line) => opts.onEvent({ type: "log", caseId: c.id, message: line }));
+          opts.onEvent({
+            type: "case-end",
+            caseId: c.id,
+            status: "pass",
+            durationMs: Math.round(performance.now() - start),
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          const isSkip = msg === "__skip__";
+          opts.onEvent({
+            type: "case-end",
+            caseId: c.id,
+            status: isSkip ? "skipped" : "fail",
+            durationMs: Math.round(performance.now() - start),
+            error: isSkip ? undefined : msg,
+          });
+        }
+        // Yield so React can paint between cases.
+        await new Promise((r) => setTimeout(r, 8));
       }
-      // Yield so React can paint between cases.
-      await new Promise((r) => setTimeout(r, 8));
+    } finally {
+      document.documentElement.classList.remove("e2e-running");
     }
   })();
   return {
