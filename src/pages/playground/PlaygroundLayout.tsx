@@ -7,6 +7,8 @@ import {
   ShieldAlert,
   Languages,
   Boxes,
+  ListChecks,
+  Wrench,
 } from "lucide-react";
 
 const subNav = [
@@ -16,6 +18,8 @@ const subNav = [
   { to: "/playground/files", label: "Files & media", icon: FileUp, testid: "sub-files" },
   { to: "/playground/security", label: "Auth & security", icon: ShieldAlert, testid: "sub-security" },
   { to: "/playground/a11y", label: "A11y & i18n", icon: Languages, testid: "sub-a11y" },
+  { to: "/playground/legacy", label: "Legacy targets", icon: Wrench, testid: "sub-legacy" },
+  { to: "/playground/all", label: "All Challenges (111)", icon: ListChecks, testid: "sub-all" },
 ];
 
 export default function PlaygroundLayout() {
