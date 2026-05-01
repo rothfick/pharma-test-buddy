@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { E2ETestsTab, E2E_TOTAL_TESTS } from "@/components/playwright/E2ETestsTab";
+import { PlaygroundTour } from "@/components/playwright/PlaygroundTour";
+import { TOUR_TOTAL_STEPS } from "@/lib/playground-tour";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -186,6 +188,9 @@ export default function PlaywrightStarter() {
           <TabsTrigger value="e2e" data-testid="tab-e2e">
             E2E Tests ({E2E_TOTAL_TESTS})
           </TabsTrigger>
+          <TabsTrigger value="tour" data-testid="tab-tour">
+            Playground Tour ({TOUR_TOTAL_STEPS})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 animate-fade-in">
@@ -202,6 +207,10 @@ export default function PlaywrightStarter() {
 
         <TabsContent value="e2e" className="space-y-4 animate-fade-in">
           <E2ETestsTab />
+        </TabsContent>
+
+        <TabsContent value="tour" className="space-y-4 animate-fade-in">
+          <PlaygroundTour />
         </TabsContent>
       </Tabs>
     </div>
