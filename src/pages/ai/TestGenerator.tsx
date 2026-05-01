@@ -127,7 +127,7 @@ export default function TestGenerator() {
             <Wand2 className="h-4 w-4" /> User story
           </CardTitle>
           <CardDescription>
-            Opisz scenariusz po polsku lub angielsku. Model: <Badge variant="secondary">gemini-2.5-pro</Badge> z fallbackiem na flash.
+            Opisz scenariusz po polsku lub angielsku. Model: <Badge variant="secondary">gemini-3-flash</Badge> z fallbackiem na 2.5-flash → 2.5-pro.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
