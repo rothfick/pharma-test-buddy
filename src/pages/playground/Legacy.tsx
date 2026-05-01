@@ -9,7 +9,11 @@ import { Loader2 } from "lucide-react";
 
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
+import { ChallengeGrid } from "@/components/playground/ChallengeCard";
+import { challengesByCategory } from "@/lib/playground-challenges";
+
 export default function Legacy() {
+  const bonus = challengesByCategory("legacy");
   return (
     <div className="space-y-6" data-testid="legacy-page">
       <ApiTester />
@@ -17,6 +21,10 @@ export default function Legacy() {
       <InfiniteScroll />
       <ShadowDomCard />
       <IframeCard />
+      <section className="space-y-3" data-testid="legacy-bonus">
+        <h2 className="text-lg font-semibold">Bonus challenges ({bonus.length})</h2>
+        <ChallengeGrid items={bonus} />
+      </section>
     </div>
   );
 }
