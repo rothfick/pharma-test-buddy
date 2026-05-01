@@ -53,11 +53,26 @@ export default function ESignatures() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const p = (user?.app_metadata?.provider as string) ?? "email";
+      setProvider(p);
+      setIsOAuth(p !== "email");
+    });
+  }, []);
 
   const sign = async () => {
-    if (!form.entity_id || !form.reason || !form.password) {
-      toast.error("Entity ID, reason and password are required");
+    if (!form.entity_id || !form.reason) {
+      toast.error("Entity ID and reason are required");
+      return;
+    }
+    if (isOAuth && form.confirmation.trim().toUpperCase() !== "I CONFIRM") {
+      toast.error('Type "I CONFIRM" to re-authenticate');
+      return;
+    }
+    if (!isOAuth && !form.password) {
+      toast.error("Password required");
       return;
     }
     setSubmitting(true);
@@ -69,7 +84,8 @@ export default function ESignatures() {
         action: form.action,
         meaning: form.meaning,
         reason: form.reason,
-        password: form.password,
+        password: isOAuth ? undefined : form.password,
+        confirmation: isOAuth ? form.confirmation : undefined,
         witness_email: form.witness_email || undefined,
       },
       headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
@@ -81,7 +97,7 @@ export default function ESignatures() {
       toast.error((res.data as any).error);
     } else {
       toast.success("Signed & recorded");
-      setForm({ ...form, password: "", reason: "" });
+      setForm({ ...form, password: "", confirmation: "", reason: "" });
       load();
     }
   };
