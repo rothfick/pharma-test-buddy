@@ -130,11 +130,11 @@ export default function PlaywrightStarter() {
                 <span className="text-gradient-primary">Starter Kit</span>
               </h1>
               <p className="text-muted-foreground">
-                <strong className="text-foreground">{TOTAL_TESTS} tests</strong> across{" "}
+                <strong className="text-foreground">{TOTAL_TESTS} curated tests</strong> across{" "}
                 <strong className="text-foreground">{PLAYWRIGHT_CATEGORIES.length}</strong>{" "}
-                categories — POM, self-healing locators, AI generation, accessibility, visual,
-                performance, security & GxP. Browse the full catalog, view real Playwright code,
-                and run a live demo execution.
+                categories — każdy odpalany <strong className="text-foreground">na żywo</strong> w prawdziwym
+                oknie aplikacji: kliknięcia, wypełnianie formularzy, walidacja i nawigacja.
+                Pełen kod Playwright + ZIP starter kit do pobrania.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="lg" onClick={download} disabled={downloading} data-testid="download-zip" className="shadow-elegant">
