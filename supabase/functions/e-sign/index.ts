@@ -13,7 +13,8 @@ const BodySchema = z.object({
   action: z.string().min(1).max(64),
   meaning: z.enum(["approval", "review", "authorship", "responsibility"]),
   reason: z.string().min(3).max(500),
-  password: z.string().min(1), // re-auth
+  password: z.string().optional(), // for email/password users
+  confirmation: z.string().optional(), // for OAuth users: must equal "I CONFIRM"
   witness_email: z.string().email().optional(),
 });
 
