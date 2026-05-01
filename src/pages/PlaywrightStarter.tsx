@@ -428,6 +428,7 @@ function RunWithPreview({ test }: { test: PwTest }) {
   const [screenshotLabel, setScreenshotLabel] = useState<string | null>(null);
   const [iframeUrl, setIframeUrl] = useState<string>("about:blank");
   const [rollbackInfo, setRollbackInfo] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const cancelRef = useRef({ current: false });
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const driverRef = useRef<LiveDriver | null>(null);
