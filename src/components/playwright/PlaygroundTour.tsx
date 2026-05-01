@@ -64,7 +64,7 @@ const PAGE_LABELS: Record<string, string> = {
 export function PlaygroundTour() {
   const [running, setRunning] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [iframeUrl, setIframeUrl] = useState("/playground");
+  const [iframeUrl, setIframeUrl] = useState("/auth");
   const [highlight, setHighlight] = useState<HighlightRect | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [flashKey, setFlashKey] = useState(0);
