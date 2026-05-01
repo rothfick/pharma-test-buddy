@@ -874,34 +874,39 @@ function CategoryChip({
   );
 }
 
-function CodeBlock({ code, filename }: { code: string; filename: string }) {
-  const lines = code.replace(/\n$/, "").split("\n");
-  return (
-    <div className="overflow-hidden rounded-lg border bg-zinc-950 text-zinc-100 shadow-inner">
-      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/80 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
+const CodeBlock = forwardRef<HTMLDivElement, { code: string; filename: string }>(
+  function CodeBlock({ code, filename }, ref) {
+    const lines = code.replace(/\n$/, "").split("\n");
+    return (
+      <div
+        ref={ref}
+        className="overflow-hidden rounded-lg border bg-zinc-950 text-zinc-100 shadow-inner"
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/80 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+            <Terminal className="h-3 w-3" /> {filename}
+          </div>
+          <div className="w-12" />
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-          <Terminal className="h-3 w-3" /> {filename}
-        </div>
-        <div className="w-12" />
+        <pre className="overflow-x-auto p-3 text-xs leading-relaxed">
+          <code>
+            {lines.map((line, i) => (
+              <div key={i} className="grid grid-cols-[2.25rem_1fr]">
+                <span className="select-none text-right pr-3 text-zinc-600">{i + 1}</span>
+                <span className="whitespace-pre">{highlightLine(line)}</span>
+              </div>
+            ))}
+          </code>
+        </pre>
       </div>
-      <pre className="overflow-x-auto p-3 text-xs leading-relaxed">
-        <code>
-          {lines.map((line, i) => (
-            <div key={i} className="grid grid-cols-[2.25rem_1fr]">
-              <span className="select-none text-right pr-3 text-zinc-600">{i + 1}</span>
-              <span className="whitespace-pre">{highlightLine(line)}</span>
-            </div>
-          ))}
-        </code>
-      </pre>
-    </div>
-  );
-}
+    );
+  },
+);
 
 function highlightLine(line: string) {
   // Lightweight token highlighter (no external dep)
