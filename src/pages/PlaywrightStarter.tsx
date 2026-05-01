@@ -291,7 +291,7 @@ function CatalogTab() {
     PLAYWRIGHT_TESTS.find((t) => t.id === selectedId) ?? filtered[0] ?? PLAYWRIGHT_TESTS[0];
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,440px)_1fr]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,360px)_1fr]">
       <Card className="overflow-hidden">
         <CardHeader className="space-y-3">
           <div className="relative">
