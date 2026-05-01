@@ -51,6 +51,7 @@ interface LogLine {
 }
 
 const PAGE_LABELS: Record<string, string> = {
+  "/auth": "Sign-in",
   "/playground": "Overview",
   "/playground/interactions": "UI interactions",
   "/playground/async": "Async & race",
@@ -63,7 +64,7 @@ const PAGE_LABELS: Record<string, string> = {
 export function PlaygroundTour() {
   const [running, setRunning] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [iframeUrl, setIframeUrl] = useState("/playground");
+  const [iframeUrl, setIframeUrl] = useState("/auth");
   const [highlight, setHighlight] = useState<HighlightRect | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [flashKey, setFlashKey] = useState(0);
@@ -164,12 +165,12 @@ export function PlaygroundTour() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setRecError(msg);
-        pushLog({ text: `⚠ Recording unavailable: ${msg}`, kind: "fail" });
+        pushLog({ text: `⚠ Recording skipped: ${msg}`, kind: "system" });
       }
     }
 
-    // Navigate iframe to first page so the LiveDriver has something to attach to.
-    setIframeUrl("/playground");
+    // Navigate iframe to first page (sign-in) so the LiveDriver has something to attach to.
+    setIframeUrl("/auth");
     await new Promise((r) => setTimeout(r, 800));
 
     if (!iframeRef.current) {

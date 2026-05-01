@@ -53,7 +53,7 @@ export class ScreenRecorder {
    * iframe pixels directly (no permission prompt); otherwise we fall back to
    * `getDisplayMedia` which prompts the user to pick a tab/window.
    */
-  async start(opts: { iframe?: HTMLIFrameElement | null }): Promise<void> {
+  async start(opts: { iframe?: HTMLIFrameElement | null; allowDisplayMediaFallback?: boolean }): Promise<void> {
     if (this.state === "recording") return;
     this.chunks = [];
 
@@ -67,7 +67,14 @@ export class ScreenRecorder {
       }
     }
     if (!stream) {
-      // fallback: prompt the user to share this tab/window
+      // Only attempt getDisplayMedia when explicitly allowed AND we're inside a
+      // user-gesture handler (e.g. invoked synchronously from a click). Calling
+      // it later in an async flow throws "must be called from a user gesture".
+      if (!opts.allowDisplayMediaFallback) {
+        throw new Error(
+          "iframe.captureStream() unavailable in this browser — recording skipped (use Chromium for in-page capture).",
+        );
+      }
       const md = navigator.mediaDevices as unknown as DisplayMediaSupport;
       if (!md?.getDisplayMedia) {
         throw new Error("Screen capture is not supported in this browser.");
