@@ -157,6 +157,66 @@ export type Database = {
         }
         Relationships: []
       }
+      chaos_experiments: {
+        Row: {
+          abort_condition: string | null
+          blast_radius: string
+          conclusion: string | null
+          created_at: string
+          duration_ms: number | null
+          experiment_type: string
+          finished_at: string | null
+          hypothesis: string | null
+          id: string
+          name: string
+          observations: Json
+          parameters: Json
+          started_at: string | null
+          status: string
+          target: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          abort_condition?: string | null
+          blast_radius?: string
+          conclusion?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          experiment_type: string
+          finished_at?: string | null
+          hypothesis?: string | null
+          id?: string
+          name: string
+          observations?: Json
+          parameters?: Json
+          started_at?: string | null
+          status?: string
+          target: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          abort_condition?: string | null
+          blast_radius?: string
+          conclusion?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          experiment_type?: string
+          finished_at?: string | null
+          hypothesis?: string | null
+          id?: string
+          name?: string
+          observations?: Json
+          parameters?: Json
+          started_at?: string | null
+          status?: string
+          target?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       coverage_snapshots: {
         Row: {
           branch: string | null
@@ -409,6 +469,84 @@ export type Database = {
         }
         Relationships: []
       }
+      perf_runs: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          error_rate: number
+          failed_requests: number
+          finished_at: string | null
+          id: string
+          load_profile: string
+          max_ms: number
+          min_ms: number
+          p50_ms: number
+          p95_ms: number
+          p99_ms: number
+          raw_samples: Json
+          rps: number
+          scenario_name: string
+          slo_id: string | null
+          slo_passed: boolean | null
+          status: string
+          successful_requests: number
+          target_url: string
+          total_requests: number
+          user_id: string | null
+          vus: number
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          error_rate?: number
+          failed_requests?: number
+          finished_at?: string | null
+          id?: string
+          load_profile: string
+          max_ms?: number
+          min_ms?: number
+          p50_ms?: number
+          p95_ms?: number
+          p99_ms?: number
+          raw_samples?: Json
+          rps?: number
+          scenario_name: string
+          slo_id?: string | null
+          slo_passed?: boolean | null
+          status?: string
+          successful_requests?: number
+          target_url: string
+          total_requests?: number
+          user_id?: string | null
+          vus?: number
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          error_rate?: number
+          failed_requests?: number
+          finished_at?: string | null
+          id?: string
+          load_profile?: string
+          max_ms?: number
+          min_ms?: number
+          p50_ms?: number
+          p95_ms?: number
+          p99_ms?: number
+          raw_samples?: Json
+          rps?: number
+          scenario_name?: string
+          slo_id?: string | null
+          slo_passed?: boolean | null
+          status?: string
+          successful_requests?: number
+          target_url?: string
+          total_requests?: number
+          user_id?: string | null
+          vus?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -617,6 +755,48 @@ export type Database = {
           prompt_embedding?: string | null
           prompt_text?: string
           response?: string
+        }
+        Relationships: []
+      }
+      slo_definitions: {
+        Row: {
+          comparator: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          metric: string
+          name: string
+          service: string
+          target_value: number
+          updated_at: string
+          window_days: number
+        }
+        Insert: {
+          comparator?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric: string
+          name: string
+          service?: string
+          target_value: number
+          updated_at?: string
+          window_days?: number
+        }
+        Update: {
+          comparator?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric?: string
+          name?: string
+          service?: string
+          target_value?: number
+          updated_at?: string
+          window_days?: number
         }
         Relationships: []
       }
