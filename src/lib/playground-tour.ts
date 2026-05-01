@@ -22,7 +22,50 @@ const SEE = (selector: string, timeoutMs = 6000): Cmd => ({ kind: "expectVisible
 const SCROLL = (selector: string): Cmd => ({ kind: "scrollIntoView", selector });
 const SHOT = (label: string): Cmd => ({ kind: "screenshot", label });
 
+// ---------- demo credentials (used by the login phase) ----------
+export const TOUR_DEMO_EMAIL = "tour-demo@example.com";
+export const TOUR_DEMO_PASSWORD = "Passw0rd!";
+
 // ---------- per-page sequences ----------
+
+const loginSteps: TourStep[] = [
+  {
+    page: "/auth",
+    label: "Open sign-in screen",
+    cmds: [
+      GOTO("/auth"),
+      W(500),
+      SEE('[data-testid="auth-card"]', 8000),
+      SHOT("auth-screen"),
+      W(400),
+    ],
+  },
+  {
+    page: "/auth",
+    label: "Fill credentials",
+    cmds: [
+      SCROLL('[data-testid="signin-form"]'),
+      FILL('[data-testid="signin-email"]', TOUR_DEMO_EMAIL),
+      W(250),
+      FILL('[data-testid="signin-password"]', TOUR_DEMO_PASSWORD),
+      W(300),
+      SHOT("auth-filled"),
+    ],
+  },
+  {
+    page: "/auth",
+    label: "Submit sign-in",
+    cmds: [
+      CLICK('[data-testid="signin-submit"]'),
+      W(1800),
+    ],
+  },
+  {
+    page: "/playground",
+    label: "Navigate to Playground",
+    cmds: [GOTO("/playground"), W(700)],
+  },
+];
 
 const overviewSteps: TourStep[] = [
   {
