@@ -293,9 +293,131 @@ function Layout({
       return <ChaosLayout />;
     case "a11y":
       return <A11yLayout />;
+    case "tasks":
+      return <TasksLayout highlight={highlight} />;
+    case "wizard":
+      return <CheckoutLayout highlight={highlight} />;
+    case "quality":
+      return <QualityLayout />;
+    case "ai":
+      return <AiLayout />;
+    case "profile":
+      return <ProfileLayout highlight={highlight} fields={fields} />;
     case "list":
       return <DashboardLayout highlight={highlight} />;
   }
+}
+
+function TasksLayout({ highlight }: { highlight: string | null }) {
+  const tasks = [
+    { t: "Review release notes for v3.4", d: "Today" },
+    { t: "Triage flaky test #1827", d: "Today" },
+    { t: "Update GxP audit policy", d: "Tomorrow" },
+    { t: "Pair on chaos experiment design", d: "Fri" },
+    { t: "Sign-off Q2 validation report", d: "Next week" },
+  ];
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <ChromeNav />
+      <HL id="tasks" highlight={highlight} className="flex-1 p-4">
+        <div className="rounded-lg border bg-white">
+          <div className="flex items-center justify-between border-b px-3 py-2">
+            <p className="text-sm font-bold">My tasks</p>
+            <button className="rounded bg-blue-600 px-2 py-1 text-[11px] font-medium text-white">
+              + New task
+            </button>
+          </div>
+          <ul className="divide-y text-xs">
+            {tasks.map((x) => (
+              <li key={x.t} className="flex items-center gap-2 px-3 py-2">
+                <span className="h-3 w-3 rounded border border-zinc-400" />
+                <span className="flex-1">{x.t}</span>
+                <span className="text-[10px] text-zinc-500">{x.d}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </HL>
+    </div>
+  );
+}
+
+function QualityLayout() {
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <ChromeNav />
+      <div className="flex-1 grid grid-cols-2 gap-3 p-4">
+        <Stat label="Deploy freq" value="14 / wk" tone="ok" />
+        <Stat label="Lead time" value="2.4h" tone="ok" />
+        <Stat label="MTTR" value="38m" tone="ok" />
+        <Stat label="Change-fail" value="3.1%" tone="ok" />
+        <div className="col-span-2 rounded-lg border bg-white p-2">
+          <p className="text-[10px] uppercase text-zinc-500">Test pyramid</p>
+          <div className="mt-1 space-y-1">
+            <div className="h-3 w-1/4 rounded bg-rose-400" />
+            <div className="h-3 w-2/4 rounded bg-amber-400" />
+            <div className="h-3 w-full rounded bg-emerald-400" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AiLayout() {
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <ChromeNav />
+      <div className="flex-1 p-4 space-y-2">
+        <div className="rounded-lg border bg-white p-3">
+          <p className="text-sm font-bold">AI gateway · last hour</p>
+          <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+            <div className="rounded border p-2">
+              <p className="text-[10px] uppercase text-zinc-500">Calls</p>
+              <p className="font-bold">1,284</p>
+            </div>
+            <div className="rounded border p-2">
+              <p className="text-[10px] uppercase text-zinc-500">P95 latency</p>
+              <p className="font-bold">812ms</p>
+            </div>
+            <div className="rounded border p-2">
+              <p className="text-[10px] uppercase text-zinc-500">Cost</p>
+              <p className="font-bold">$4.12</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border bg-zinc-950 p-2 font-mono text-[10px] text-emerald-300">
+          model=google/gemini-2.5-flash · prompt_tokens=1284 · completion_tokens=712 · ok
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileLayout({ highlight, fields }: { highlight: string | null; fields: FieldState }) {
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <ChromeNav />
+      <div className="flex-1 p-4">
+        <div className="rounded-lg border bg-white p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500" />
+            <div>
+              <p className="text-sm font-bold">{fields.email ?? "qa+demo@lovable.dev"}</p>
+              <p className="text-[11px] text-zinc-500">QA Engineer · Lovable</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Field label="Display name" />
+            <Field label="Timezone" />
+          </div>
+          <HL id="apply" highlight={highlight} className="mt-3 flex justify-end">
+            <button className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white">Save</button>
+          </HL>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function HL({ id, highlight, children, className }: { id: string; highlight: string | null; children?: React.ReactNode; className?: string }) {

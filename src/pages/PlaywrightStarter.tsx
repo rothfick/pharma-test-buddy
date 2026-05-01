@@ -433,7 +433,7 @@ function RunWithPreview({ test }: { test: PwTest }) {
 
   const run = async () => {
     cancelRef.current = false;
-    const newPlan = planForTest(test.category, test.steps.length, test.expected);
+    const newPlan = planForTest(test);
     setPlan(newPlan);
     setActionIndex(0); // navigate
     setActiveStep(-1);
