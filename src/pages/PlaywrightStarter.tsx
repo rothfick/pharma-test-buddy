@@ -367,7 +367,7 @@ function CatalogTab() {
         <Card key={selected.id} className="overflow-hidden animate-fade-in">
           <CardHeader
             className={cn(
-              "border-b bg-gradient-to-r text-white",
+              "flex flex-col space-y-1.5 p-6 border-b bg-gradient-to-r text-white bg-accent border-muted-foreground shadow-none",
               CATEGORY_STYLES[selected.category].gradient,
             )}
           >
