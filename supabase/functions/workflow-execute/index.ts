@@ -215,6 +215,12 @@ Deno.serve(async (req) => {
       } catch { /* anonymous */ }
     }
 
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "auth required" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = (await req.json()) as ExecuteRequest;
     let nodes = body.nodes;
     let edges = body.edges;
@@ -222,8 +228,13 @@ Deno.serve(async (req) => {
 
     if (workflowId && (!nodes || !edges)) {
       const { data: wf, error } = await admin
-        .from("workflows").select("nodes, edges").eq("id", workflowId).maybeSingle();
+        .from("workflows").select("nodes, edges, user_id").eq("id", workflowId).maybeSingle();
       if (error || !wf) throw new Error("Workflow not found");
+      if (wf.user_id && wf.user_id !== userId) {
+        return new Response(JSON.stringify({ error: "forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       nodes = wf.nodes as WFNode[];
       edges = wf.edges as WFEdge[];
     }
