@@ -682,3 +682,66 @@ function Stat({
     </div>
   );
 }
+
+function CategoryChip({
+  category,
+  stats,
+  active,
+}: {
+  category: StepCategory;
+  stats: { total: number; pass: number; fail: number; running: number; skipped: number; idle: number };
+  active: boolean;
+}) {
+  const style = CATEGORY_STYLES[category as keyof typeof CATEGORY_STYLES];
+  const Icon = style?.icon ?? CompassIcon;
+  const done = stats.pass + stats.fail + stats.skipped;
+  const pct = stats.total ? Math.round((done / stats.total) * 100) : 0;
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-lg border bg-card p-2.5 transition-all",
+        style?.ring ?? "border-border",
+        active && "ring-2 ring-primary/60 shadow-elegant",
+      )}
+      data-testid={`tour-category-${category.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-md", style?.soft ?? "bg-muted")}>
+            <Icon className={cn("h-3.5 w-3.5", style?.text ?? "text-foreground")} />
+          </span>
+          <span className="truncate text-xs font-medium">{category}</span>
+          {stats.running > 0 && (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+          )}
+        </div>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {done}/{stats.total}
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-[10px]">
+        <span className="flex items-center gap-1 text-emerald-600">
+          <CheckCircle2 className="h-3 w-3" /> {stats.pass}
+        </span>
+        <span className="flex items-center gap-1 text-destructive">
+          <XCircle className="h-3 w-3" /> {stats.fail}
+        </span>
+        {stats.skipped > 0 && (
+          <span className="flex items-center gap-1 text-amber-500">
+            <CircleDashed className="h-3 w-3" /> {stats.skipped}
+          </span>
+        )}
+        <span className="ml-auto font-mono text-muted-foreground">{pct}%</span>
+      </div>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            "h-full transition-all",
+            stats.fail > 0 ? "bg-destructive" : "bg-primary",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
