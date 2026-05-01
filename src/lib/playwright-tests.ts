@@ -519,66 +519,51 @@ test('${t.title} ${tagStr}', async ({ page }) => {
   }
 }
 
-// Curated list — ONLY tests that have a real, visually-rich live scenario
-// inside the iframe (real clicks, fills, navigation). Anything that would only
-// produce a "navigate + assert visible" smoke is excluded so the Live Runner
-// always delivers a wow effect.
-const CURATED: Array<{
-  id: string;
-  category: PwCategory;
-  title: string;
-  expected: TestStatus;
-}> = [
-  // Smoke — homepage (animated dashboard load)
-  { id: "smoke-001", category: "Smoke", title: "Homepage loads under 2s", expected: "pass" },
-  { id: "smoke-002", category: "Smoke", title: "Primary navigation renders", expected: "pass" },
+function pad(n: number, width = 3): string {
+  return String(n).padStart(width, "0");
+}
 
-  // Auth — form + validation
-  { id: "auth-001", category: "Auth & MFA", title: "User signs in with valid credentials", expected: "pass" },
-  { id: "auth-002", category: "Auth & MFA", title: "User receives error on invalid password", expected: "pass" },
-  { id: "auth-021", category: "Auth & MFA", title: "Password policy rejects weak inputs", expected: "pass" },
-
-  // E2E — full wizard
-  { id: "e2e-015", category: "E2E Journeys", title: "User completes multi-step wizard", expected: "pass" },
-  { id: "e2e-002", category: "E2E Journeys", title: "User adds task, edits, marks complete", expected: "pass" },
-
-  // Regression — wizard validation
-  { id: "reg-001", category: "Regression", title: "Form validation messages stay localized", expected: "pass" },
-
-  // Tasks-flavoured
-  { id: "reg-022", category: "Regression", title: "Filter chips can be cleared individually", expected: "pass" },
-
-  // Profile
-  { id: "smoke-013", category: "Smoke", title: "Profile page reachable from nav", expected: "pass" },
-];
+// Deterministic expected-status distribution per category index so the suite
+// looks realistic (mostly pass, a few flaky/fail/skipped) without randomness.
+function pickExpected(catIndex: number, i: number): TestStatus {
+  const seed = (catIndex * 31 + i * 7) % 100;
+  if (seed < 86) return "pass";
+  if (seed < 94) return "flaky";
+  if (seed < 98) return "fail";
+  return "skipped";
+}
 
 function generate(): PwTest[] {
-  return CURATED.map((c) => {
-    const catDef = CATEGORIES.find((x) => x.name === c.category)!;
-    const t: PwTest = {
-      id: c.id,
-      category: c.category,
-      title: c.title,
-      tags: catDef.tags,
-      expected: c.expected,
-      steps: buildSteps(c.category),
-      code: "",
-    };
-    t.code = buildCode(t);
-    return t;
+  const out: PwTest[] = [];
+  CATEGORIES.forEach((catDef, catIndex) => {
+    const titles = TEMPLATES[catDef.name];
+    for (let i = 0; i < catDef.count; i++) {
+      // If we have more slots than unique titles, append a numbered suffix
+      // (variant) so every test stays uniquely identifiable.
+      const baseTitle = titles[i % titles.length];
+      const variant = Math.floor(i / titles.length);
+      const title = variant === 0 ? baseTitle : `${baseTitle} (variant ${variant + 1})`;
+      const id = `${catDef.prefix}-${pad(i + 1)}`;
+      const t: PwTest = {
+        id,
+        category: catDef.name,
+        title,
+        tags: catDef.tags,
+        expected: pickExpected(catIndex, i),
+        steps: buildSteps(catDef.name),
+        code: "",
+      };
+      t.code = buildCode(t);
+      out.push(t);
+    }
   });
+  return out;
 }
 
 export const PLAYWRIGHT_TESTS: PwTest[] = generate();
 
-// Categories filtered to only those represented in the curated set, with
-// real per-category counts.
-export const PLAYWRIGHT_CATEGORIES: { name: PwCategory; count: number }[] = (() => {
-  const counts = new Map<PwCategory, number>();
-  for (const t of PLAYWRIGHT_TESTS) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
-  return CATEGORIES
-    .filter((c) => counts.has(c.name))
-    .map((c) => ({ name: c.name, count: counts.get(c.name)! }));
-})();
+export const PLAYWRIGHT_CATEGORIES: { name: PwCategory; count: number }[] =
+  CATEGORIES.map((c) => ({ name: c.name, count: c.count }));
 
 export const TOTAL_TESTS = PLAYWRIGHT_TESTS.length;
+
