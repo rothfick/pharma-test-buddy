@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { E2ETestsTab, E2E_TOTAL_TESTS } from "@/components/playwright/E2ETestsTab";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -182,6 +183,9 @@ export default function PlaywrightStarter() {
           <TabsTrigger value="runner" data-testid="tab-runner">
             Live Runner
           </TabsTrigger>
+          <TabsTrigger value="e2e" data-testid="tab-e2e">
+            E2E Tests ({E2E_TOTAL_TESTS})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 animate-fade-in">
@@ -194,6 +198,10 @@ export default function PlaywrightStarter() {
 
         <TabsContent value="runner" className="space-y-4 animate-fade-in">
           <RunnerTab />
+        </TabsContent>
+
+        <TabsContent value="e2e" className="space-y-4 animate-fade-in">
+          <E2ETestsTab />
         </TabsContent>
       </Tabs>
     </div>
