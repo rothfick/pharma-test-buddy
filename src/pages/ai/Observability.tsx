@@ -10,6 +10,8 @@ import {
 import { RefreshCw, Send } from "lucide-react";
 import { toast } from "sonner";
 
+type ModelKey = "flash" | "pro" | "gpt" | "cached";
+
 interface Trace {
   id: string;
   feature: string;
@@ -42,6 +44,7 @@ export default function Observability() {
   const [filter, setFilter] = useState("");
   const [testPrompt, setTestPrompt] = useState("Wyjaśnij w 2 zdaniach czym jest flaky test.");
   const [sending, setSending] = useState(false);
+  const [activeModel, setActiveModel] = useState<ModelKey | null>(null);
 
   const fetchTraces = async () => {
     setLoading(true);
@@ -87,8 +90,9 @@ export default function Observability() {
     return { total, cost, latency, tokens, cacheHits, errors };
   }, [filtered]);
 
-  const sendTest = async (model: string, useCache: boolean) => {
+  const sendTest = async (key: ModelKey, model: string, useCache: boolean) => {
     setSending(true);
+    setActiveModel(key);
     try {
       const { data, error } = await supabase.functions.invoke("llm-gateway", {
         body: {
@@ -107,6 +111,9 @@ export default function Observability() {
       setSending(false);
     }
   };
+
+  const btnVariant = (key: ModelKey) =>
+    (activeModel === key ? "default" : "secondary") as "default" | "secondary";
 
   return (
     <div className="space-y-6" data-testid="ai-observability">
@@ -136,29 +143,29 @@ export default function Observability() {
           />
           <div className="flex flex-wrap gap-2">
             <Button
-              size="sm" disabled={sending}
-              onClick={() => sendTest("google/gemini-3-flash-preview", false)}
+              size="sm" variant={btnVariant("flash")} disabled={sending}
+              onClick={() => sendTest("flash", "google/gemini-3-flash-preview", false)}
               data-testid="obs-send-flash"
             >
               <Send className="mr-2 h-3.5 w-3.5" /> Gemini Flash
             </Button>
             <Button
-              size="sm" variant="secondary" disabled={sending}
-              onClick={() => sendTest("google/gemini-2.5-pro", false)}
+              size="sm" variant={btnVariant("pro")} disabled={sending}
+              onClick={() => sendTest("pro", "google/gemini-2.5-pro", false)}
               data-testid="obs-send-pro"
             >
               <Send className="mr-2 h-3.5 w-3.5" /> Gemini Pro
             </Button>
             <Button
-              size="sm" variant="secondary" disabled={sending}
-              onClick={() => sendTest("openai/gpt-5-mini", false)}
+              size="sm" variant={btnVariant("gpt")} disabled={sending}
+              onClick={() => sendTest("gpt", "openai/gpt-5-mini", false)}
               data-testid="obs-send-gpt"
             >
               <Send className="mr-2 h-3.5 w-3.5" /> GPT-5 mini
             </Button>
             <Button
-              size="sm" variant="outline" disabled={sending}
-              onClick={() => sendTest("google/gemini-3-flash-preview", true)}
+              size="sm" variant={btnVariant("cached")} disabled={sending}
+              onClick={() => sendTest("cached", "google/gemini-3-flash-preview", true)}
               data-testid="obs-send-cached"
             >
               <Send className="mr-2 h-3.5 w-3.5" /> Flash (cached)
