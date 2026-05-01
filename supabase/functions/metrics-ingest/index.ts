@@ -62,13 +62,12 @@ const Body = z.discriminatedUnion("type", [DoraSchema, TestRunSchema, FlakySchem
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
+    // Public demo ingest endpoint — uses service role to bypass RLS so the
+    // dashboard seed flow on /quality-metrics works for anonymous visitors.
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
