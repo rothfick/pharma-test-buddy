@@ -163,9 +163,14 @@ export default function VisualDiff() {
             data-testid="vdiff-compare"
           >
             {loading
-              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Comparing…</>
+              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analiza obrazów… {elapsed}s</>
               : <><ImageIcon className="mr-2 h-4 w-4" /> Compare</>}
           </Button>
+          {loading && (
+            <p className="text-xs text-muted-foreground">
+              Multimodalne LLM analizuje screenshoty (zwykle 3–15s).
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -173,6 +178,9 @@ export default function VisualDiff() {
         <Card data-testid="vdiff-result">
           <CardHeader>
             <CardTitle className="text-base">Verdict</CardTitle>
+            {usedModel && (
+              <CardDescription className="text-xs">model: {usedModel}</CardDescription>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
