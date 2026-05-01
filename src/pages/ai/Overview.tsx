@@ -14,22 +14,22 @@ const sections = [
   {
     to: "/ai/test-generator", title: "Playwright Test Generator",
     desc: "User story / screenshot → gotowy test TS z Page Object. Streaming + structured output.",
-    icon: Wand2, status: "soon", testid: "ai-card-testgen",
+    icon: Wand2, status: "live", testid: "ai-card-testgen",
   },
   {
     to: "/ai/self-healing", title: "Self-healing Selectors",
     desc: "Failujący selektor + DOM snapshot → naprawa + uzasadnienie. Klasyczny QA agentic use case.",
-    icon: Wrench, status: "soon", testid: "ai-card-heal",
+    icon: Wrench, status: "live", testid: "ai-card-heal",
   },
   {
     to: "/ai/bug-triage", title: "Bug Triage",
     desc: "Stacktrace / log / HAR → klasyfikacja (flaky/regression/env/data) + root cause hypothesis.",
-    icon: Bug, status: "soon", testid: "ai-card-triage",
+    icon: Bug, status: "live", testid: "ai-card-triage",
   },
   {
     to: "/ai/visual-diff", title: "Visual Diff (multimodal)",
     desc: "Dwa screenshoty → Gemini Pro ocenia: bug vs intended change. Killer feature dla Playwright.",
-    icon: ImageIcon, status: "soon", testid: "ai-card-vdiff",
+    icon: ImageIcon, status: "live", testid: "ai-card-vdiff",
   },
   {
     to: "/ai/agents", title: "Agent Crew",
