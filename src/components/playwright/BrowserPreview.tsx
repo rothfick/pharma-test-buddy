@@ -298,7 +298,7 @@ function Layout({
   }
 }
 
-function HL({ id, highlight, children, className }: { id: string; highlight: string | null; children: React.ReactNode; className?: string }) {
+function HL({ id, highlight, children, className }: { id: string; highlight: string | null; children?: React.ReactNode; className?: string }) {
   const active = highlight === id;
   return (
     <div
