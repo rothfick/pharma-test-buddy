@@ -11,12 +11,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListTodo, FlaskConical, LogOut, User as UserIcon, Beaker, Sparkles, ShieldCheck, BarChart3, Lock, Zap, Download } from "lucide-react";
+import { LayoutDashboard, FlaskConical, LogOut, User as UserIcon, Beaker, Sparkles, ShieldCheck, BarChart3, Lock, Zap, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, testid: "nav-dashboard" },
-  { to: "/tasks", label: "Tasks", icon: ListTodo, testid: "nav-tasks" },
   { to: "/playground", label: "Playground", icon: FlaskConical, testid: "nav-playground" },
   { to: "/ai", label: "AI Lab", icon: Sparkles, testid: "nav-ai" },
   { to: "/compliance", label: "GxP", icon: ShieldCheck, testid: "nav-compliance" },
