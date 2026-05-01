@@ -28,6 +28,7 @@ import {
   Zap,
   Terminal,
   ListChecks,
+  Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -38,6 +39,8 @@ import {
   type TestStatus,
 } from "@/lib/playwright-tests";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
+import { planForTest, type VisualPlan } from "@/lib/playwright-visual";
+import { BrowserPreview } from "@/components/playwright/BrowserPreview";
 import { cn } from "@/lib/utils";
 
 type RunStatus = TestStatus | "running" | "queued" | "idle";
