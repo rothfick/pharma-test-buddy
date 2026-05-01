@@ -149,6 +149,49 @@ export default function Auth() {
           <CardDescription>Sign in to your test environment</CardDescription>
         </CardHeader>
         <CardContent>
+          {mfaChallengeId ? (
+            <form onSubmit={verifyMfa} className="space-y-4" data-testid="mfa-form">
+              <Alert>
+                <AlertDescription>
+                  Two-factor authentication required. Enter the 6-digit code from your authenticator app.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Label htmlFor="mfa-code">Authentication code</Label>
+                <Input
+                  id="mfa-code"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  autoFocus
+                  data-testid="mfa-code"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={mfaVerifying || mfaCode.length !== 6} data-testid="mfa-submit">
+                {mfaVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Verify
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setMfaChallengeId(null);
+                  setMfaFactorId(null);
+                  setMfaCode("");
+                }}
+                data-testid="mfa-cancel"
+              >
+                Cancel
+              </Button>
+            </form>
+          ) : (
+          <>
+        
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2" data-testid="auth-tabs">
               <TabsTrigger value="signin" data-testid="tab-signin">Sign in</TabsTrigger>
