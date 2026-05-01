@@ -463,12 +463,11 @@ const CASES: E2ECase[] = [
         assert(btn, "Run manually button not found");
         btn.click();
         await tick(120);
-        const dialog = document.querySelector('[role="dialog"]');
+        const dialog = m.doc.querySelector('[role="dialog"]');
         assert(dialog, "dialog did not open");
         const iframe = dialog.querySelector("iframe");
         assert(iframe, "live preview iframe missing in dialog");
         log("dialog opened with iframe");
-        // close to leave clean state — try ESC
         const ev = new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
         dialog.dispatchEvent(ev);
         await tick(60);
