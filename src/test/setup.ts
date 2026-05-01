@@ -13,3 +13,9 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+// jsdom doesn't implement scrollIntoView — polyfill so the LiveDriver works.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function () {};
+}
+

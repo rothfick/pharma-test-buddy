@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Loader2,
   Download,
@@ -29,6 +30,8 @@ import {
   Terminal,
   ListChecks,
   Monitor,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -425,6 +428,7 @@ function RunWithPreview({ test }: { test: PwTest }) {
   const [screenshotLabel, setScreenshotLabel] = useState<string | null>(null);
   const [iframeUrl, setIframeUrl] = useState<string>("about:blank");
   const [rollbackInfo, setRollbackInfo] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const cancelRef = useRef({ current: false });
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const driverRef = useRef<LiveDriver | null>(null);
@@ -482,6 +486,7 @@ function RunWithPreview({ test }: { test: PwTest }) {
       toast.error("Live preview not ready yet");
       return;
     }
+    setExpanded(true);
     cancelRef.current = { current: false };
     setRunning(true);
     setResult({ status: "running", completedSteps: 0, totalSteps: test.steps.length, log: [] });
@@ -621,17 +626,62 @@ function RunWithPreview({ test }: { test: PwTest }) {
               <Badge variant="outline" className="text-[10px] font-mono">
                 {iframeUrl}
               </Badge>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2"
+                onClick={() => setExpanded((v) => !v)}
+                data-testid="toggle-expand-preview"
+                aria-label={expanded ? "Minimize preview" : "Maximize preview"}
+              >
+                {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              </Button>
             </div>
           </div>
-          <LiveBrowser
-            url={iframeUrl}
-            highlight={highlight}
-            cursor={cursor}
-            flashKey={flashKey}
-            screenshotLabel={screenshotLabel}
-            recording={running}
-            onIframeReady={onIframeReady}
-          />
+
+          {/*
+            The LiveBrowser is wrapped in a div whose styles flip between
+            inline and a fixed-position overlay sized to 75% of the viewport.
+            This keeps the same iframe element mounted (driver keeps its ref).
+          */}
+          {expanded && (
+            <div
+              className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm animate-fade-in"
+              onClick={() => !running && setExpanded(false)}
+              data-testid="preview-modal-backdrop"
+            />
+          )}
+          <div
+            className={cn(
+              expanded
+                ? "fixed left-1/2 top-1/2 z-[101] w-[75vw] h-[75vh] -translate-x-1/2 -translate-y-1/2 shadow-2xl rounded-xl overflow-hidden ring-2 ring-primary/40"
+                : "relative",
+            )}
+            data-testid="preview-stage"
+          >
+            <LiveBrowser
+              url={iframeUrl}
+              highlight={highlight}
+              cursor={cursor}
+              flashKey={flashKey}
+              screenshotLabel={screenshotLabel}
+              recording={running}
+              onIframeReady={onIframeReady}
+              className={expanded ? "h-full !aspect-auto" : ""}
+            />
+            {expanded && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="absolute right-3 top-12 z-10 h-7 px-2 shadow"
+                onClick={() => setExpanded(false)}
+                data-testid="close-preview-modal"
+              >
+                <Minimize2 className="mr-1 h-3.5 w-3.5" /> Close
+              </Button>
+            )}
+          </div>
+
           <div className="flex items-center gap-2">
             {!running ? (
               <Button size="sm" onClick={run} data-testid={`run-${test.id}`} className="shadow-elegant">
