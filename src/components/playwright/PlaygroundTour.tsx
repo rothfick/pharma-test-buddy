@@ -369,7 +369,7 @@ export function PlaygroundTour() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <Stat label="Steps" value={TOUR_TOTAL_STEPS} tone="muted" />
+            <Stat label="Steps" value={FULL_SUITE_TOTAL_STEPS} tone="muted" />
             <Stat label="Done" value={completed} tone="primary" />
             <Stat label="Pass" value={counts.pass} tone="success" />
             <Stat label="Fail" value={counts.fail} tone="destructive" />
