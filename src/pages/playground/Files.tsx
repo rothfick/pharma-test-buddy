@@ -6,13 +6,21 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Upload, Download, ClipboardCopy, ClipboardPaste, Image as ImageIcon } from "lucide-react";
 
+import { ChallengeGrid } from "@/components/playground/ChallengeCard";
+import { challengesByCategory } from "@/lib/playground-challenges";
+
 export default function Files() {
+  const bonus = challengesByCategory("files");
   return (
     <div className="space-y-6" data-testid="files-page">
       <DropzoneUpload />
       <DownloadFiles />
       <ImagePreview />
       <Clipboard />
+      <section className="space-y-3" data-testid="files-bonus">
+        <h2 className="text-lg font-semibold">Bonus challenges ({bonus.length})</h2>
+        <ChallengeGrid items={bonus} />
+      </section>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import PlaygroundFiles from "./pages/playground/Files";
 import PlaygroundSecurity from "./pages/playground/Security";
 import PlaygroundA11y from "./pages/playground/A11y";
 import PlaygroundLegacy from "./pages/playground/Legacy";
+import PlaygroundAll from "./pages/playground/AllChallenges";
 import AILabLayout from "./pages/ai/AILabLayout";
 import AIOverview from "./pages/ai/Overview";
 import AIObservability from "./pages/ai/Observability";
@@ -89,6 +90,7 @@ const App = () => (
                 <Route path="security" element={<PlaygroundSecurity />} />
                 <Route path="a11y" element={<PlaygroundA11y />} />
                 <Route path="legacy" element={<PlaygroundLegacy />} />
+                <Route path="all" element={<PlaygroundAll />} />
               </Route>
               <Route path="/ai" element={<AILabLayout />}>
                 <Route index element={<AIOverview />} />

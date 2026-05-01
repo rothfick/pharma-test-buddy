@@ -15,13 +15,21 @@ import {
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+import { ChallengeGrid } from "@/components/playground/ChallengeCard";
+import { challengesByCategory } from "@/lib/playground-challenges";
+
 export default function Security() {
+  const bonus = challengesByCategory("security");
   return (
     <div className="space-y-6" data-testid="security-page">
       <SessionExpiry />
       <OtpInput />
       <CaptchaMock />
       <RateLimit />
+      <section className="space-y-3" data-testid="security-bonus">
+        <h2 className="text-lg font-semibold">Bonus challenges ({bonus.length})</h2>
+        <ChallengeGrid items={bonus} />
+      </section>
     </div>
   );
 }

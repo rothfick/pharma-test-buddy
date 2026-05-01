@@ -8,7 +8,11 @@ import { Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+import { ChallengeGrid } from "@/components/playground/ChallengeCard";
+import { challengesByCategory } from "@/lib/playground-challenges";
+
 export default function Async() {
+  const bonus = challengesByCategory("async");
   return (
     <div className="space-y-6" data-testid="async-page">
       <AutoSave />
@@ -16,6 +20,10 @@ export default function Async() {
       <Polling />
       <RealtimeChat />
       <ToastBurst />
+      <section className="space-y-3" data-testid="async-bonus">
+        <h2 className="text-lg font-semibold">Bonus challenges ({bonus.length})</h2>
+        <ChallengeGrid items={bonus} />
+      </section>
     </div>
   );
 }
