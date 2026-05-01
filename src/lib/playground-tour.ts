@@ -439,7 +439,7 @@ function interactionForChallenge(c: Challenge): Cmd[] {
     case "accordion":
       return [CLICK(`[data-testid="${t}-trigger"]`), W(200)];
     case "dialog":
-      return [CLICK(`[data-testid="${t}-open`.concat(`"]`)), W(300), CLICK(`[data-testid="${t}-cancel"]`), W(200)];
+      return [CLICK(`[data-testid="${t}-open"]`), W(300), CLICK(`[data-testid="${t}-cancel"]`), W(200)];
     case "popover":
       return [CLICK(`[data-testid="${t}-trigger"]`), W(250)];
     case "tooltip-hover":
