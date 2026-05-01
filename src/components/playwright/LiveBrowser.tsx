@@ -91,7 +91,6 @@ export function LiveBrowser({
       {/* Viewport */}
       <div
         className="relative flex-1 overflow-hidden bg-white"
-        style={{ height: "calc(100% - 33px)" }}
       >
         <iframe
           ref={ref}
