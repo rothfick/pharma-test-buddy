@@ -143,10 +143,22 @@ export default function ESignatures() {
             <Label>Witness email (optional, dual-control)</Label>
             <Input value={form.witness_email} onChange={(e) => setForm({ ...form, witness_email: e.target.value })} data-testid="esig-witness" />
           </div>
-          <div>
-            <Label>Your password * (re-auth)</Label>
-            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} data-testid="esig-password" />
-          </div>
+          {isOAuth ? (
+            <div>
+              <Label>Type "I CONFIRM" * (OAuth re-auth via {provider})</Label>
+              <Input
+                value={form.confirmation}
+                onChange={(e) => setForm({ ...form, confirmation: e.target.value })}
+                placeholder="I CONFIRM"
+                data-testid="esig-confirmation"
+              />
+            </div>
+          ) : (
+            <div>
+              <Label>Your password * (re-auth)</Label>
+              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} data-testid="esig-password" />
+            </div>
+          )}
           <div className="md:col-span-2">
             <Button onClick={sign} disabled={submitting} data-testid="esig-submit">
               {submitting ? "Signing…" : "Sign & Record"}
