@@ -323,6 +323,7 @@ const finaleSteps: TourStep[] = [
 ];
 
 export const PLAYGROUND_TOUR: TourStep[] = [
+  ...loginSteps,
   ...overviewSteps,
   ...interactionsSteps,
   ...asyncSteps,
