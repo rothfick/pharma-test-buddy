@@ -42,6 +42,7 @@ import {
   type TestStatus,
 } from "@/lib/playwright-tests";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 type RunStatus = TestStatus | "running" | "queued" | "idle";
@@ -68,23 +69,32 @@ export default function PlaywrightStarter() {
   const download = async () => {
     setDownloading(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/playwright-starter`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
+      const { data, error } = await supabase.functions.invoke("playwright-starter", {
+        method: "GET",
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
+      if (error) throw error;
+      // data is a Blob when response is binary
+      const blob =
+        data instanceof Blob
+          ? data
+          : new Blob([data as ArrayBuffer], { type: "application/zip" });
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
+      link.href = blobUrl;
       link.download = "qa-playwright-starter.zip";
+      link.rel = "noopener";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
+      // Fallback for sandboxed iframes that block downloads
+      window.setTimeout(() => {
+        try {
+          window.open(blobUrl, "_blank", "noopener");
+        } catch {
+          /* ignore */
+        }
+        URL.revokeObjectURL(blobUrl);
+      }, 1500);
       toast.success("Downloaded — extract and run npm install");
     } catch (e) {
       toast.error(`Download failed: ${(e as Error).message}`);
