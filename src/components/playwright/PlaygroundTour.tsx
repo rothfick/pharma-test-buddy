@@ -423,6 +423,41 @@ export function PlaygroundTour() {
             <Stat label="Progress" value={`${progress}%`} tone="primary" />
           </div>
           <Progress value={progress} className="h-2" />
+
+          {/* Live category strip — pokazuje na żywo postęp w kategoriach
+              testów (Smoke, API, Regression, Chaos, Security, Performance, …)
+              w trakcie trwania Playground Tour. */}
+          <div className="space-y-2" data-testid="tour-category-strip">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Test categories — live
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {PRIMARY_CATEGORIES.map((cat) => (
+                <CategoryChip
+                  key={cat}
+                  category={cat}
+                  stats={categoryStats.get(cat) ?? { total: 0, pass: 0, fail: 0, running: 0, skipped: 0, idle: 0 }}
+                  active={activeCategory === cat}
+                />
+              ))}
+            </div>
+            <details className="group">
+              <summary className="cursor-pointer text-[10px] uppercase tracking-wide text-muted-foreground hover:text-foreground">
+                + more categories ({SECONDARY_CATEGORIES.length})
+              </summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {SECONDARY_CATEGORIES.map((cat) => (
+                  <CategoryChip
+                    key={cat}
+                    category={cat}
+                    stats={categoryStats.get(cat) ?? { total: 0, pass: 0, fail: 0, running: 0, skipped: 0, idle: 0 }}
+                    active={activeCategory === cat}
+                  />
+                ))}
+              </div>
+            </details>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="outline" className="gap-1">
               <ShieldCheck className="h-3 w-3" /> Auto-rollback
