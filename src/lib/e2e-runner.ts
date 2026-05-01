@@ -329,46 +329,107 @@ const CASES: E2ECase[] = [
   },
 
   // ===== playwright-starter-preview.test.tsx =====
-  // These three Vitest cases require @testing-library/react + a router. We
-  // mark them as skipped here; the suite is still verified by Vitest in CI.
+  // Real DOM tests: mount <PlaywrightStarter/> in a detached container with
+  // MemoryRouter + QueryClient and assert the live preview overlay behaviour.
   {
     id: "ui-render-stage",
     file: "playwright-starter-preview.test.tsx",
     name: "renders the catalog tab with the live preview stage",
-    intent: "Wymaga renderingu pełnej strony — uruchamiane tylko w Vitest (CI).",
+    intent: "Mountuje stronę i sprawdza, że scena live preview oraz katalog są w DOM.",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const stage = m.container.querySelector('[data-testid="preview-stage"]');
+        assert(stage, "expected [data-testid=preview-stage] in DOM");
+        log("preview stage rendered");
+      } finally {
+        m.unmount();
+      }
     },
   },
   {
     id: "ui-expand",
     file: "playwright-starter-preview.test.tsx",
     name: "toggling Maximize expands the preview to a 75% overlay",
-    intent: "Wymaga @testing-library/react — uruchamiane tylko w Vitest (CI).",
+    intent: "Klika Maximize i weryfikuje overlay 75vw/75vh.",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const toggle = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid="toggle-expand-preview"]',
+        );
+        assert(toggle, "expand toggle not found");
+        toggle.click();
+        await tick();
+        const stage = m.container.querySelector('[data-testid="preview-stage"]');
+        const cls = stage?.className ?? "";
+        assert(/w-\[75vw\]/.test(cls) && /h-\[75vh\]/.test(cls), `not expanded: ${cls}`);
+        log("overlay expanded to 75vw/75vh");
+      } finally {
+        m.unmount();
+      }
     },
   },
   {
     id: "ui-close",
     file: "playwright-starter-preview.test.tsx",
     name: "Close button collapses the preview back to inline",
-    intent: "Wymaga @testing-library/react — uruchamiane tylko w Vitest (CI).",
+    intent: "Klika Close i weryfikuje powrót do inline.",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const toggle = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid="toggle-expand-preview"]',
+        );
+        assert(toggle, "expand toggle not found");
+        toggle.click();
+        await tick();
+        const close = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid="close-preview-modal"]',
+        );
+        assert(close, "close button not found");
+        close.click();
+        await tick();
+        const stage = m.container.querySelector('[data-testid="preview-stage"]');
+        const cls = stage?.className ?? "";
+        assert(!/w-\[75vw\]/.test(cls), `still expanded: ${cls}`);
+        log("collapsed back to inline");
+      } finally {
+        m.unmount();
+      }
     },
   },
   {
     id: "ui-backdrop",
     file: "playwright-starter-preview.test.tsx",
     name: "clicking the backdrop dismisses the modal when not running",
-    intent: "Wymaga @testing-library/react — uruchamiane tylko w Vitest (CI).",
+    intent: "Klika backdrop i weryfikuje, że overlay znika.",
     run: async (log) => {
-      log("skipped in browser runner — covered by Vitest");
-      throw new Error("__skip__");
+      const m = await mountPlaywrightStarter();
+      try {
+        await openFirstTestDetail(m.container, log);
+        const toggle = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid="toggle-expand-preview"]',
+        );
+        assert(toggle, "expand toggle not found");
+        toggle.click();
+        await tick();
+        const backdrop = m.container.querySelector<HTMLDivElement>(
+          '[data-testid="preview-modal-backdrop"]',
+        );
+        assert(backdrop, "backdrop not found");
+        backdrop.click();
+        await tick();
+        const stage = m.container.querySelector('[data-testid="preview-stage"]');
+        const cls = stage?.className ?? "";
+        assert(!/w-\[75vw\]/.test(cls), `still expanded after backdrop click: ${cls}`);
+        log("backdrop dismissed overlay");
+      } finally {
+        m.unmount();
+      }
     },
   },
 ];
