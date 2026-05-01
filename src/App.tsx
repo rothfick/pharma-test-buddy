@@ -34,6 +34,12 @@ import AICostTracker from "./pages/ai/CostTracker";
 import AISyntheticData from "./pages/ai/SyntheticData";
 import AIWorkflowBuilder from "./pages/ai/WorkflowBuilder";
 import ComplianceLayout from "./pages/compliance/ComplianceLayout";
+import QualityLayout from "./pages/quality/QualityLayout";
+import QualityOverview from "./pages/quality/Overview";
+import QualityDora from "./pages/quality/Dora";
+import QualityPyramid from "./pages/quality/Pyramid";
+import QualityFlaky from "./pages/quality/Flaky";
+import QualityCoverage from "./pages/quality/Coverage";
 import ComplianceOverview from "./pages/compliance/Overview";
 import AuditTrail from "./pages/compliance/AuditTrail";
 import ESignatures from "./pages/compliance/ESignatures";
@@ -95,6 +101,13 @@ const App = () => (
                 <Route path="e-signatures" element={<ESignatures />} />
                 <Route path="data-integrity" element={<DataIntegrity />} />
                 <Route path="validation" element={<Validation />} />
+              </Route>
+              <Route path="/quality-metrics" element={<QualityLayout />}>
+                <Route index element={<QualityOverview />} />
+                <Route path="dora" element={<QualityDora />} />
+                <Route path="pyramid" element={<QualityPyramid />} />
+                <Route path="flaky" element={<QualityFlaky />} />
+                <Route path="coverage" element={<QualityCoverage />} />
               </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>

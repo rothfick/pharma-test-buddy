@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListTodo, FileText, FlaskConical, LogOut, User as UserIcon, Beaker, Sparkles, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, ListTodo, FileText, FlaskConical, LogOut, User as UserIcon, Beaker, Sparkles, ShieldCheck, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -21,6 +21,7 @@ const navItems = [
   { to: "/playground", label: "QA Playground", icon: FlaskConical, testid: "nav-playground" },
   { to: "/ai", label: "AI Lab", icon: Sparkles, testid: "nav-ai" },
   { to: "/compliance", label: "Compliance (GxP)", icon: ShieldCheck, testid: "nav-compliance" },
+  { to: "/quality-metrics", label: "Quality Metrics", icon: BarChart3, testid: "nav-quality" },
 ];
 
 export function AppLayout() {
