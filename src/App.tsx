@@ -132,6 +132,7 @@ const App = () => (
                 <Route path="perf" element={<ChaosPerfLab />} />
                 <Route path="slo" element={<ChaosSlos />} />
               </Route>
+              <Route path="/playwright-starter" element={<PlaywrightStarter />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
             <Route path="*" element={<NotFound />} />
