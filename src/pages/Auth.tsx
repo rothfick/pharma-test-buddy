@@ -24,10 +24,55 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaVerifying, setMfaVerifying] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
+    if (!user) return;
+    // After signin, check whether session needs MFA elevation.
+    (async () => {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel === aal?.nextLevel) {
+        navigate("/", { replace: true });
+        return;
+      }
+      // nextLevel === aal2 but current === aal1 → need TOTP challenge
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totp = (factors?.totp ?? []).find((f) => f.status === "verified");
+      if (!totp) {
+        navigate("/", { replace: true });
+        return;
+      }
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+      if (chErr || !ch) {
+        toast.error(chErr?.message ?? "Could not start MFA challenge");
+        await supabase.auth.signOut();
+        return;
+      }
+      setMfaFactorId(totp.id);
+      setMfaChallengeId(ch.id);
+    })();
   }, [user, navigate]);
+
+  const verifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaFactorId || !mfaChallengeId) return;
+    setMfaVerifying(true);
+    const { error } = await supabase.auth.mfa.verify({
+      factorId: mfaFactorId,
+      challengeId: mfaChallengeId,
+      code: mfaCode.trim(),
+    });
+    setMfaVerifying(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("MFA verified");
+    navigate("/", { replace: true });
+  };
 
   const validate = () => {
     const e = emailSchema.safeParse(email);
@@ -104,6 +149,49 @@ export default function Auth() {
           <CardDescription>Sign in to your test environment</CardDescription>
         </CardHeader>
         <CardContent>
+          {mfaChallengeId ? (
+            <form onSubmit={verifyMfa} className="space-y-4" data-testid="mfa-form">
+              <Alert>
+                <AlertDescription>
+                  Two-factor authentication required. Enter the 6-digit code from your authenticator app.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Label htmlFor="mfa-code">Authentication code</Label>
+                <Input
+                  id="mfa-code"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  autoFocus
+                  data-testid="mfa-code"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={mfaVerifying || mfaCode.length !== 6} data-testid="mfa-submit">
+                {mfaVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Verify
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setMfaChallengeId(null);
+                  setMfaFactorId(null);
+                  setMfaCode("");
+                }}
+                data-testid="mfa-cancel"
+              >
+                Cancel
+              </Button>
+            </form>
+          ) : (
+          <>
+        
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2" data-testid="auth-tabs">
               <TabsTrigger value="signin" data-testid="tab-signin">Sign in</TabsTrigger>
@@ -224,6 +312,8 @@ export default function Auth() {
           <p className="mt-6 text-center text-xs text-muted-foreground">
             <Link to="/" className="hover:underline">Back to home</Link>
           </p>
+          </>
+          )}
         </CardContent>
       </Card>
     </div>
