@@ -416,86 +416,191 @@ function CatalogTab() {
 }
 
 function RunWithPreview({ test }: { test: PwTest }) {
-  const [actionIndex, setActionIndex] = useState(-1);
   const [activeStep, setActiveStep] = useState(-1);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
-  const [plan, setPlan] = useState<VisualPlan | null>(null);
-  const cancelRef = useRef(false);
+  const [highlight, setHighlight] = useState<HighlightRect | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const [flashKey, setFlashKey] = useState(0);
+  const [screenshotLabel, setScreenshotLabel] = useState<string | null>(null);
+  const [iframeUrl, setIframeUrl] = useState<string>("about:blank");
+  const [rollbackInfo, setRollbackInfo] = useState<string | null>(null);
+  const cancelRef = useRef({ current: false });
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const driverRef = useRef<LiveDriver | null>(null);
+
+  const scenario = useMemo(() => buildScenario(test), [test]);
 
   // Reset on test change
   useEffect(() => {
-    cancelRef.current = true;
-    setActionIndex(-1);
+    cancelRef.current.current = true;
     setActiveStep(-1);
     setRunning(false);
     setResult(null);
-    setPlan(null);
+    setHighlight(null);
+    setCursor(null);
+    setScreenshotLabel(null);
+    setRollbackInfo(null);
   }, [test.id]);
 
+  const onIframeReady = (el: HTMLIFrameElement) => {
+    iframeRef.current = el;
+  };
+
+  const handleEvent = (e: DriverEvent) => {
+    switch (e.type) {
+      case "step-start":
+        if (e.cmd?.kind === "goto") {
+          setFlashKey((k) => k + 1);
+        }
+        break;
+      case "step-end":
+        // handled per command index in run loop
+        break;
+      case "highlight":
+        if (e.rect) setHighlight(e.rect);
+        break;
+      case "cursor":
+        if (e.rect) setCursor({ x: e.rect.x, y: e.rect.y });
+        break;
+      case "screenshot":
+        setScreenshotLabel(e.label ?? null);
+        setFlashKey((k) => k + 1);
+        window.setTimeout(() => setScreenshotLabel(null), 900);
+        break;
+      case "url":
+        if (e.url) setIframeUrl(e.url);
+        break;
+      case "log":
+        // surfaced via run loop log
+        break;
+    }
+  };
+
   const run = async () => {
-    cancelRef.current = false;
-    const newPlan = planForTest(test);
-    setPlan(newPlan);
-    setActionIndex(0); // navigate
-    setActiveStep(-1);
+    if (!iframeRef.current) {
+      toast.error("Live preview not ready yet");
+      return;
+    }
+    cancelRef.current = { current: false };
     setRunning(true);
     setResult({ status: "running", completedSteps: 0, totalSteps: test.steps.length, log: [] });
+    setActiveStep(0);
+    setHighlight(null);
+    setCursor(null);
 
-    const log: string[] = [];
-    let elapsed = 0;
-    let cursor = 1; // 0 = navigate, already emitted
-    await sleep(280);
-    if (cancelRef.current) return;
-
-    for (let i = 0; i < test.steps.length; i++) {
-      if (cancelRef.current) return;
-      const step = test.steps[i];
-      setActiveStep(i);
-      const actionsThisStep = newPlan.stepActionCounts[i] ?? 1;
-      const perAction = Math.max(220, Math.round((step.ms * 0.55) / actionsThisStep));
-      for (let a = 0; a < actionsThisStep; a++) {
-        if (cancelRef.current) return;
-        setActionIndex(cursor);
-        cursor++;
-        await sleep(perAction);
+    // Snapshot first if scenario mutates
+    let snap = null;
+    if (scenario.mutates) {
+      try {
+        snap = await snapshotTasks();
+      } catch (e) {
+        console.warn("snapshot failed", e);
       }
-      elapsed += step.ms;
-      log.push(`✓ ${step.label} (${step.ms}ms)`);
-      setResult({
-        status: "running",
-        completedSteps: i + 1,
-        totalSteps: test.steps.length,
-        log: [...log],
-        durationMs: elapsed,
-      });
     }
 
-    const status: TestStatus = test.expected;
-    if (status === "fail")
-      log.push("✗ AssertionError: expected element to be visible (mock outcome)");
-    if (status === "flaky") log.push("⚠ Flaky: passed on retry #2");
+    const driver = new LiveDriver({
+      iframe: iframeRef.current,
+      origin: window.location.origin,
+      onEvent: handleEvent,
+      cancelRef: cancelRef.current,
+    });
+    driverRef.current = driver;
+
+    const log: string[] = [];
+    const t0 = performance.now();
+
+    // Track which scenario step we're on based on cmd index ranges
+    const stepRanges = scenario.stepRanges;
+    let currentStepIdx = 0;
+    let firstFailureStep: number | null = null;
+
+    // We run commands one-by-one to update activeStep accurately
+    let outcomeStatus: TestStatus = "pass";
+    for (let i = 0; i < scenario.cmds.length; i++) {
+      if (cancelRef.current.current) break;
+
+      // advance step pointer
+      while (currentStepIdx < stepRanges.length && i > stepRanges[currentStepIdx].end) {
+        currentStepIdx++;
+      }
+      if (
+        currentStepIdx < stepRanges.length &&
+        i >= stepRanges[currentStepIdx].start &&
+        i <= stepRanges[currentStepIdx].end
+      ) {
+        setActiveStep(currentStepIdx);
+      }
+
+      const cmd = scenario.cmds[i];
+      try {
+        await driver.runOne(cmd);
+        if (cmd.kind !== "log" && cmd.kind !== "wait") {
+          log.push(`✓ ${describeCmd(cmd)}`);
+        }
+      } catch (err) {
+        const msg = (err as Error).message;
+        log.push(`✗ ${describeCmd(cmd)} — ${msg}`);
+        outcomeStatus = "fail";
+        firstFailureStep = currentStepIdx;
+        break;
+      }
+
+      // mark completed step on the boundary
+      if (currentStepIdx < stepRanges.length && i === stepRanges[currentStepIdx].end) {
+        setResult((r) =>
+          r
+            ? {
+                ...r,
+                completedSteps: currentStepIdx + 1,
+                durationMs: Math.round(performance.now() - t0),
+                log: [...log],
+              }
+            : r,
+        );
+      }
+    }
+
+    const elapsed = Math.round(performance.now() - t0);
+
+    // Rollback
+    if (snap) {
+      try {
+        const rb = await rollbackTasks(snap);
+        const summary = `rollback: deleted ${rb.deleted}, restored ${rb.restored}${rb.errors.length ? `, errors: ${rb.errors.length}` : ""}`;
+        setRollbackInfo(summary);
+        log.push(`↺ ${summary}`);
+      } catch (e) {
+        const msg = (e as Error).message;
+        setRollbackInfo(`rollback failed: ${msg}`);
+        log.push(`✗ rollback failed: ${msg}`);
+      }
+    }
+
     setResult({
-      status,
-      completedSteps: test.steps.length,
+      status: cancelRef.current.current ? "skipped" : outcomeStatus,
+      completedSteps: firstFailureStep ?? test.steps.length,
       totalSteps: test.steps.length,
-      log,
       durationMs: elapsed,
+      log,
     });
     setRunning(false);
+    setHighlight(null);
   };
 
   const stop = () => {
-    cancelRef.current = true;
+    cancelRef.current.current = true;
+    driverRef.current?.cancel();
     setRunning(false);
   };
 
   const reset = () => {
-    cancelRef.current = true;
+    cancelRef.current.current = true;
     setResult(null);
-    setPlan(null);
-    setActionIndex(-1);
     setActiveStep(-1);
+    setHighlight(null);
+    setCursor(null);
+    setRollbackInfo(null);
   };
 
   const finalStatus = result?.status;
@@ -503,28 +608,34 @@ function RunWithPreview({ test }: { test: PwTest }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Left: live browser preview */}
+        {/* Left: live iframe preview */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
-              <Monitor className="h-3.5 w-3.5" /> Live preview
+              <Monitor className="h-3.5 w-3.5" /> Live preview (real app)
             </h4>
             <div className="flex items-center gap-2">
-              {running && (
-                <Badge variant="outline" className="gap-1 text-[10px]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> REC
-                </Badge>
-              )}
               <Badge variant="secondary" className="text-[10px]">
-                {plan?.scene.layout ?? "idle"}
+                {scenario.mutates ? "mutates · auto-rollback" : "read-only"}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] font-mono">
+                {iframeUrl}
               </Badge>
             </div>
           </div>
-          <BrowserPreview plan={plan} actionIndex={actionIndex} />
+          <LiveBrowser
+            url={iframeUrl}
+            highlight={highlight}
+            cursor={cursor}
+            flashKey={flashKey}
+            screenshotLabel={screenshotLabel}
+            recording={running}
+            onIframeReady={onIframeReady}
+          />
           <div className="flex items-center gap-2">
             {!running ? (
               <Button size="sm" onClick={run} data-testid={`run-${test.id}`} className="shadow-elegant">
-                <Play className="mr-1 h-3 w-3" /> {result ? "Replay" : "Run with live preview"}
+                <Play className="mr-1 h-3 w-3" /> {result ? "Replay on live app" : "Run on live app"}
               </Button>
             ) : (
               <Button size="sm" variant="destructive" onClick={stop}>
@@ -551,10 +662,14 @@ function RunWithPreview({ test }: { test: PwTest }) {
                 finalStatus === "fail" && "border-destructive/40 bg-destructive/10 text-destructive",
                 finalStatus === "flaky" && "border-amber-500/40 bg-amber-500/10 text-amber-700",
                 finalStatus === "running" && "border-primary/40 bg-primary/10 text-primary",
+                finalStatus === "skipped" && "border-muted-foreground/30 bg-muted/40 text-muted-foreground",
               )}
             >
               <StatusIcon status={finalStatus} pulse={finalStatus === "running"} />
               <span className="font-medium">{labelFor(finalStatus)}</span>
+              {rollbackInfo && (
+                <span className="ml-auto text-[11px] font-mono opacity-80">{rollbackInfo}</span>
+              )}
             </div>
           )}
         </div>
@@ -600,7 +715,7 @@ function RunWithPreview({ test }: { test: PwTest }) {
             </ol>
           </div>
           {result && result.log.length > 0 && (
-            <pre className="max-h-32 overflow-auto rounded-md bg-zinc-950 p-2.5 text-[11px] leading-snug text-zinc-200">
+            <pre className="max-h-40 overflow-auto rounded-md bg-zinc-950 p-2.5 text-[11px] leading-snug text-zinc-200">
               {result.log.join("\n")}
             </pre>
           )}
@@ -608,6 +723,41 @@ function RunWithPreview({ test }: { test: PwTest }) {
       </div>
     </div>
   );
+}
+
+function describeCmd(cmd: import("@/lib/live-driver").Cmd): string {
+  switch (cmd.kind) {
+    case "goto":
+      return `goto ${cmd.path}`;
+    case "click":
+      return `click ${cmd.selector}`;
+    case "fill":
+      return `fill ${cmd.selector} = "${cmd.value.length > 24 ? cmd.value.slice(0, 24) + "…" : cmd.value}"`;
+    case "expectVisible":
+      return `expect(${cmd.selector}).toBeVisible()`;
+    case "expectText":
+      return `expect(${cmd.selector}).toContainText("${cmd.text}")`;
+    case "expectUrl":
+      return `expect(page).toHaveURL(${String(cmd.pattern)})`;
+    case "expectCount":
+      return `expect(${cmd.selector}).toHaveCount(${cmd.min ?? "*"}–${cmd.max ?? "*"})`;
+    case "waitForSelector":
+      return `waitForSelector(${cmd.selector})`;
+    case "wait":
+      return `wait ${cmd.ms}ms`;
+    case "screenshot":
+      return `screenshot ${cmd.label}`;
+    case "press":
+      return `press(${cmd.key})`;
+    case "select":
+      return `select(${cmd.selector}, ${cmd.value})`;
+    case "evaluate":
+      return `page.evaluate(...)`;
+    case "scrollIntoView":
+      return `scrollIntoView(${cmd.selector})`;
+    case "log":
+      return cmd.message;
+  }
 }
 
 function sleep(ms: number) {
