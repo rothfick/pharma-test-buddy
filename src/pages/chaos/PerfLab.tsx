@@ -34,6 +34,7 @@ interface PerfRun {
   max_ms: number;
   error_rate: number;
   raw_samples: any;
+  slo_passed: boolean | null;
   status: string;
   created_at: string;
   finished_at: string | null;
@@ -129,7 +130,7 @@ export default function PerfLab() {
     const totalDur = (Date.now() - startTs) / 1000;
     const errorRateActual = samples.length > 0 ? (failed / samples.length) * 100 : 0;
 
-    const { error } = await supabase.from("perf_runs").insert({
+    const { error } = await (supabase.from("perf_runs") as any).insert({
       user_id: user.id,
       scenario_name: scenarioName || `${profile.label} — ${new Date().toLocaleTimeString()}`,
       target_url: targetUrl,
