@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Loader2,
   Download,
@@ -29,6 +30,8 @@ import {
   Terminal,
   ListChecks,
   Monitor,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
