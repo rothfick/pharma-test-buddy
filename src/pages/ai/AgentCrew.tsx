@@ -96,7 +96,28 @@ export default function AgentCrew() {
             }
           },
         )
-        .subscribe();
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            // Backfill any steps inserted before subscription was ready
+            const { data: existing } = await supabase
+              .from("agent_steps")
+              .select("*")
+              .eq("run_id", runId)
+              .order("step_index", { ascending: true });
+            if (existing && existing.length) {
+              setSteps((prev) => {
+                const seen = new Set(prev.map((p) => p.id));
+                const merged = [...prev, ...(existing as Step[]).filter((s) => !seen.has(s.id))];
+                return merged.sort((a, b) => a.step_index - b.step_index);
+              });
+            }
+            const { data: freshRun } = await supabase.from("agent_runs").select("*").eq("id", runId).single();
+            if (freshRun) {
+              setRun(freshRun as Run);
+              if ((freshRun as Run).status !== "running") setStarting(false);
+            }
+          }
+        });
       channelRef.current = ch;
     } catch (e) {
       toast({ title: "Błąd", description: String(e), variant: "destructive" });
