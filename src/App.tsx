@@ -50,6 +50,11 @@ import SecurityOverview from "./pages/security/Overview";
 import SecurityMfa from "./pages/security/Mfa";
 import SecuritySso from "./pages/security/Sso";
 import SecuritySessions from "./pages/security/Sessions";
+import ChaosLayout from "./pages/chaos/ChaosLayout";
+import ChaosOverview from "./pages/chaos/Overview";
+import ChaosExperiments from "./pages/chaos/Experiments";
+import ChaosPerfLab from "./pages/chaos/PerfLab";
+import ChaosSlos from "./pages/chaos/Slos";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -119,6 +124,12 @@ const App = () => (
                 <Route path="mfa" element={<SecurityMfa />} />
                 <Route path="sso" element={<SecuritySso />} />
                 <Route path="sessions" element={<SecuritySessions />} />
+              </Route>
+              <Route path="/chaos" element={<ChaosLayout />}>
+                <Route index element={<ChaosOverview />} />
+                <Route path="experiments" element={<ChaosExperiments />} />
+                <Route path="perf" element={<ChaosPerfLab />} />
+                <Route path="slo" element={<ChaosSlos />} />
               </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>
