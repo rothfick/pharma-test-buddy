@@ -9,6 +9,11 @@ function makeIframe(html: string): HTMLIFrameElement {
   doc.open();
   doc.write(`<!doctype html><html><body>${html}</body></html>`);
   doc.close();
+  // jsdom doesn't implement scrollIntoView in the iframe realm either.
+  const win = iframe.contentWindow as unknown as { Element: { prototype: { scrollIntoView?: () => void } } };
+  if (win?.Element && !win.Element.prototype.scrollIntoView) {
+    win.Element.prototype.scrollIntoView = function () {};
+  }
   return iframe;
 }
 
