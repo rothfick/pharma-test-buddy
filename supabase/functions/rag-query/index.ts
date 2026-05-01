@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
   const chunks = (matches ?? []) as Array<{ chunk_id: string; document_id: string; content: string; similarity: number }>;
   const top = chunks[0];
   // Guardrail: brak dobrego matcha
-  if (!top || top.similarity < 0.55) {
+  if (!top || top.similarity < 0.15) {
     await admin.from("llm_traces").insert({
       user_id: userId, feature: "rag_query", model: "guardrail",
       prompt_tokens: 0, completion_tokens: 0, cost_usd: 0,
