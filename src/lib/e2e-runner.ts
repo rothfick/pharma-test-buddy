@@ -404,19 +404,20 @@ const CASES: E2ECase[] = [
 
   // ===== playwright-starter-preview.test.tsx =====
   // Real DOM tests: mount <PlaywrightStarter/> in a detached container with
-  // MemoryRouter + QueryClient and assert the live preview overlay behaviour.
+  // MemoryRouter + QueryClient and assert the new "Run manually" UX wired
+  // into the Test source section.
   {
     id: "ui-render-stage",
     file: "playwright-starter-preview.test.tsx",
-    name: "renders the catalog tab with the live preview stage",
-    intent: "Mountuje stronę i sprawdza, że scena live preview oraz katalog są w DOM.",
+    name: "renders the catalog with a Run manually button per test",
+    intent: "Mountuje stronę i sprawdza, że pierwszy test ma przycisk Run manually.",
     run: async (log) => {
       const m = await mountPlaywrightStarter();
       try {
         await openFirstTestDetail(m.container, log);
-        const stage = m.container.querySelector('[data-testid="preview-stage"]');
-        assert(stage, "expected [data-testid=preview-stage] in DOM");
-        log("preview stage rendered");
+        const btn = m.container.querySelector('[data-testid^="run-manually-"]');
+        assert(btn, "expected a [data-testid^=run-manually-] button");
+        log(`found ${btn.getAttribute("data-testid")}`);
       } finally {
         m.unmount();
       }
@@ -425,22 +426,27 @@ const CASES: E2ECase[] = [
   {
     id: "ui-expand",
     file: "playwright-starter-preview.test.tsx",
-    name: "toggling Maximize expands the preview to a 75% overlay",
-    intent: "Klika Maximize i weryfikuje overlay 75vw/75vh.",
+    name: "clicking Run manually opens the live preview dialog",
+    intent: "Klika Run manually i weryfikuje, że dialog z LiveBrowser się otwiera.",
     run: async (log) => {
       const m = await mountPlaywrightStarter();
       try {
         await openFirstTestDetail(m.container, log);
-        const toggle = m.container.querySelector<HTMLButtonElement>(
-          '[data-testid="toggle-expand-preview"]',
+        const btn = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid^="run-manually-"]',
         );
-        assert(toggle, "expand toggle not found");
-        toggle.click();
-        await tick();
-        const stage = m.container.querySelector('[data-testid="preview-stage"]');
-        const cls = stage?.className ?? "";
-        assert(/w-\[75vw\]/.test(cls) && /h-\[75vh\]/.test(cls), `not expanded: ${cls}`);
-        log("overlay expanded to 75vw/75vh");
+        assert(btn, "Run manually button not found");
+        btn.click();
+        await tick(120);
+        const dialog = document.querySelector('[role="dialog"]');
+        assert(dialog, "dialog did not open");
+        const iframe = dialog.querySelector("iframe");
+        assert(iframe, "live preview iframe missing in dialog");
+        log("dialog opened with iframe");
+        // close to leave clean state — try ESC
+        const ev = new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+        dialog.dispatchEvent(ev);
+        await tick(60);
       } finally {
         m.unmount();
       }
@@ -449,28 +455,30 @@ const CASES: E2ECase[] = [
   {
     id: "ui-close",
     file: "playwright-starter-preview.test.tsx",
-    name: "Close button collapses the preview back to inline",
-    intent: "Klika Close i weryfikuje powrót do inline.",
+    name: "Close button dismisses the manual run dialog",
+    intent: "Otwiera dialog i zamyka go przyciskiem Close.",
     run: async (log) => {
       const m = await mountPlaywrightStarter();
       try {
         await openFirstTestDetail(m.container, log);
-        const toggle = m.container.querySelector<HTMLButtonElement>(
-          '[data-testid="toggle-expand-preview"]',
+        const btn = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid^="run-manually-"]',
         );
-        assert(toggle, "expand toggle not found");
-        toggle.click();
-        await tick();
-        const close = m.container.querySelector<HTMLButtonElement>(
-          '[data-testid="close-preview-modal"]',
+        assert(btn, "Run manually button not found");
+        btn.click();
+        await tick(120);
+        let dialog = document.querySelector('[role="dialog"]');
+        assert(dialog, "dialog did not open");
+        // Find a button labelled "Close" inside the dialog
+        const closeBtn = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button")).find(
+          (b) => /^\s*close\s*$/i.test(b.textContent ?? ""),
         );
-        assert(close, "close button not found");
-        close.click();
-        await tick();
-        const stage = m.container.querySelector('[data-testid="preview-stage"]');
-        const cls = stage?.className ?? "";
-        assert(!/w-\[75vw\]/.test(cls), `still expanded: ${cls}`);
-        log("collapsed back to inline");
+        assert(closeBtn, "Close button not found");
+        closeBtn.click();
+        await tick(120);
+        dialog = document.querySelector('[role="dialog"]');
+        assert(!dialog, "dialog still present after Close");
+        log("dialog closed via Close button");
       } finally {
         m.unmount();
       }
@@ -479,28 +487,27 @@ const CASES: E2ECase[] = [
   {
     id: "ui-backdrop",
     file: "playwright-starter-preview.test.tsx",
-    name: "clicking the backdrop dismisses the modal when not running",
-    intent: "Klika backdrop i weryfikuje, że overlay znika.",
+    name: "Escape key dismisses the manual run dialog",
+    intent: "Otwiera dialog i zamyka go klawiszem Escape (Radix overlay).",
     run: async (log) => {
       const m = await mountPlaywrightStarter();
       try {
         await openFirstTestDetail(m.container, log);
-        const toggle = m.container.querySelector<HTMLButtonElement>(
-          '[data-testid="toggle-expand-preview"]',
+        const btn = m.container.querySelector<HTMLButtonElement>(
+          '[data-testid^="run-manually-"]',
         );
-        assert(toggle, "expand toggle not found");
-        toggle.click();
-        await tick();
-        const backdrop = m.container.querySelector<HTMLDivElement>(
-          '[data-testid="preview-modal-backdrop"]',
+        assert(btn, "Run manually button not found");
+        btn.click();
+        await tick(120);
+        let dialog = document.querySelector('[role="dialog"]');
+        assert(dialog, "dialog did not open");
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
         );
-        assert(backdrop, "backdrop not found");
-        backdrop.click();
-        await tick();
-        const stage = m.container.querySelector('[data-testid="preview-stage"]');
-        const cls = stage?.className ?? "";
-        assert(!/w-\[75vw\]/.test(cls), `still expanded after backdrop click: ${cls}`);
-        log("backdrop dismissed overlay");
+        await tick(150);
+        dialog = document.querySelector('[role="dialog"]');
+        assert(!dialog, "dialog still present after Escape");
+        log("dialog dismissed via Escape");
       } finally {
         m.unmount();
       }
