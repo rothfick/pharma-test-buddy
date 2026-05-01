@@ -519,19 +519,6 @@ test('${t.title} ${tagStr}', async ({ page }) => {
   }
 }
 
-function pickExpected(idx: number): TestStatus {
-  // Mostly pass, sprinkle a few flaky/fail/skip for realism
-  const m = idx % 37;
-  if (m === 0) return "fail";
-  if (m === 11 || m === 23) return "flaky";
-  if (m === 17) return "skipped";
-  return "pass";
-}
-
-function pad(n: number, w = 3) {
-  return n.toString().padStart(w, "0");
-}
-
 // Curated list — ONLY tests that have a real, visually-rich live scenario
 // inside the iframe (real clicks, fills, navigation). Anything that would only
 // produce a "navigate + assert visible" smoke is excluded so the Live Runner
