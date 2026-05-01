@@ -21,6 +21,10 @@ import AILabLayout from "./pages/ai/AILabLayout";
 import AIOverview from "./pages/ai/Overview";
 import AIObservability from "./pages/ai/Observability";
 import AIComingSoon from "./pages/ai/ComingSoon";
+import AITestGenerator from "./pages/ai/TestGenerator";
+import AISelfHealing from "./pages/ai/SelfHealing";
+import AIBugTriage from "./pages/ai/BugTriage";
+import AIVisualDiff from "./pages/ai/VisualDiff";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -58,10 +62,10 @@ const App = () => (
               <Route path="/ai" element={<AILabLayout />}>
                 <Route index element={<AIOverview />} />
                 <Route path="observability" element={<AIObservability />} />
-                <Route path="test-generator" element={<AIComingSoon title="Playwright Test Generator" description="Story / screenshot → gotowy test TS z Page Object." plan={["Form: textarea (story) + upload screenshota","Edge function streamuje Gemini Pro (multimodal) z structured output (tool calling)","Walidacja schematem zod, podgląd kodu z syntax highlight, copy-to-clipboard","Trace w Observability (feature='test-gen')"]} />} />
-                <Route path="self-healing" element={<AIComingSoon title="Self-healing Selectors" description="Failujący selektor + DOM snapshot → naprawa + uzasadnienie." plan={["Input: stary selektor + paste DOM (lub URL do live page)","Gateway: gemini-flash z tool calling, structured output {selector, strategy, confidence}","Side-by-side diff starego i nowego selektora","Eval mode: batch 10 przykładów → success rate"]} />} />
-                <Route path="bug-triage" element={<AIComingSoon title="Bug Triage" description="Stacktrace / log / HAR → klasyfikacja + root cause." plan={["Upload .log/.har lub paste stacktrace","LLM zwraca strukturę: category, severity, root_cause, suggested_fix, confidence","Fallback chain: gpt-5-mini → gemini-flash → gemini-pro","Historia triage'y w tabeli"]} />} />
-                <Route path="visual-diff" element={<AIComingSoon title="Visual Diff (multimodal)" description="Dwa screenshoty → ocena czy zmiana to bug czy intended." plan={["Upload baseline + current image","Gemini Pro multimodal: verdict (bug/intended/needs_review) + opis","Pixel diff jako baseline + LLM jako tiebreaker","Galeria poprzednich porównań"]} />} />
+                <Route path="test-generator" element={<AITestGenerator />} />
+                <Route path="self-healing" element={<AISelfHealing />} />
+                <Route path="bug-triage" element={<AIBugTriage />} />
+                <Route path="visual-diff" element={<AIVisualDiff />} />
                 <Route path="agents" element={<AIComingSoon title="Agent Crew" description="Planner → Explorer → Writer → Critic z tool calling." plan={["Edge function agent-crew: pętla z handoffami między rolami","Tools: navigate, read_dom, query_db (whitelisted), search_docs (RAG)","Realtime: agent_steps streamuje się do UI jako timeline","Cancel mid-run, retry failed step, koszt całkowity per run"]} />} />
                 <Route path="rag" element={<AIComingSoon title="RAG nad dokumentacją" description="Upload PDF/MD → embeddings → Q&A z cytowaniami." plan={["Upload dokumentu → chunking (500 tok overlap 50)","Embeddingi → pgvector (już gotowe w schemacie)","Q&A: top-k retrieval + answer z cytowaniami","Guardrail: similarity<0.7 → 'I don't know'"]} />} />
                 <Route path="evals" element={<AIComingSoon title="Eval Harness" description="Datasety, metryki, A/B promptów." plan={["Prompt registry UI (CRUD wersji)","Datasets jako JSONL (input + expected)","Run eval: model X prompt vN → score, latency, cost","Side-by-side comparison + wykres trendu"]} />} />
