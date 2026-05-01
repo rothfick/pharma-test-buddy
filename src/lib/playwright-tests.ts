@@ -301,72 +301,478 @@ const TEMPLATES: Record<PwCategory, string[]> = {
   ],
 };
 
-function buildSteps(category: PwCategory): PwStep[] {
-  const base: Record<PwCategory, PwStep[]> = {
-    Smoke: [
-      { label: "Navigate to baseUrl", ms: 220 },
-      { label: "Wait for networkidle", ms: 380 },
-      { label: "Assert critical element visible", ms: 90 },
-    ],
-    "Auth & MFA": [
-      { label: "Open /auth", ms: 200 },
-      { label: "Fill credentials", ms: 140 },
-      { label: "Submit & wait for redirect", ms: 410 },
-      { label: "Assert authenticated state", ms: 120 },
-    ],
-    Regression: [
-      { label: "Seed fixture data", ms: 160 },
-      { label: "Perform user action", ms: 220 },
-      { label: "Assert UI state", ms: 110 },
-    ],
-    "E2E Journeys": [
-      { label: "Sign in via storageState", ms: 140 },
-      { label: "Walk through wizard", ms: 620 },
-      { label: "Assert end-to-end outcome", ms: 180 },
-      { label: "Verify backend state via API", ms: 210 },
-    ],
-    Accessibility: [
-      { label: "Inject axe", ms: 90 },
-      { label: "Run analysis", ms: 320 },
-      { label: "Assert 0 violations of impact >= serious", ms: 80 },
-    ],
-    Visual: [
-      { label: "Wait for fonts ready", ms: 180 },
-      { label: "Mask volatile regions", ms: 60 },
-      { label: "Compare to baseline (maxDiffPixelRatio: 0.01)", ms: 240 },
-    ],
-    API: [
-      { label: "Build typed request", ms: 30 },
-      { label: "Send via APIRequestContext", ms: 180 },
-      { label: "Validate response with Zod", ms: 90 },
-    ],
-    Performance: [
-      { label: "Start tracing", ms: 60 },
-      { label: "Drive scenario", ms: 540 },
-      { label: "Assert Web Vitals thresholds", ms: 120 },
-    ],
-    Security: [
-      { label: "Send crafted request", ms: 160 },
-      { label: "Assert headers / response", ms: 90 },
-    ],
-    Mobile: [
-      { label: "Use device descriptor", ms: 120 },
-      { label: "Run flow", ms: 480 },
-      { label: "Assert layout & a11y", ms: 110 },
-    ],
-    "Compliance (21 CFR Part 11)": [
-      { label: "Perform audited action", ms: 220 },
-      { label: "Query audit_log", ms: 140 },
-      { label: "Assert immutability + signature", ms: 120 },
-    ],
-    "Chaos / Resilience": [
-      { label: "Inject fault via /chaos-experiment", ms: 240 },
-      { label: "Drive user flow", ms: 360 },
-      { label: "Assert graceful degradation", ms: 140 },
-      { label: "Restore baseline", ms: 80 },
-    ],
-  };
-  return base[category];
+// Title-aware step builder: returns a unique step list per test by inspecting
+// the title for keywords (LCP/CLS/INP, login/MFA/OAuth, axe/contrast, etc.).
+// Falls back to a category-default trio when no keyword matches.
+function buildSteps(category: PwCategory, title: string): PwStep[] {
+  const t = title.toLowerCase();
+  const s = (label: string, ms: number): PwStep => ({ label, ms });
+
+  switch (category) {
+    case "Smoke": {
+      if (t.includes("homepage") || t.includes("under 2s"))
+        return [s("goto('/')", 180), s("waitForLoadState('networkidle')", 360), s("expect(loadTime).toBeLessThan(2000)", 90)];
+      if (t.includes("navigation"))
+        return [s("goto('/')", 180), s("locate('nav a').count()", 110), s("expect(links).toBeGreaterThan(3)", 70)];
+      if (t.includes("login form"))
+        return [s("goto('/auth')", 200), s("expect(getByLabel('Email')).toBeVisible()", 90), s("expect(getByRole('button', /sign in/)).toBeEnabled()", 90)];
+      if (t.includes("sign-up cta"))
+        return [s("goto('/')", 180), s("scrollIntoView fold", 60), s("expect(getByRole('link', /sign up/)).toBeVisible()", 90)];
+      if (t.includes("footer"))
+        return [s("goto('/')", 180), s("collect footer hrefs", 80), s("Promise.all(request.head)", 320), s("expect(every).toBe(200)", 60)];
+      if (t.includes("search bar"))
+        return [s("goto('/')", 180), s("fill('[role=searchbox]', 'qa')", 140), s("expect(input).toHaveValue('qa')", 60)];
+      if (t.includes("logo"))
+        return [s("goto('/pricing')", 180), s("click('header a[aria-label=Home]')", 120), s("expect(url).toBe(baseUrl)", 70)];
+      if (t.includes("cookie banner"))
+        return [s("goto('/')", 180), s("click('button[aria-label=Accept]')", 110), s("expect(banner).toBeHidden()", 70)];
+      if (t.includes("theme toggle"))
+        return [s("click('[data-testid=theme]')", 120), s("reload()", 220), s("expect(html).toHaveClass(/dark/)", 80)];
+      if (t.includes("language"))
+        return [s("selectOption('lang', 'pl')", 130), s("expect(h1).toContainText('Witaj')", 90)];
+      if (t.includes("404"))
+        return [s("goto('/no-such-page')", 180), s("expect(status).toBe(404)", 60), s("expect(getByText(/not found/)).toBeVisible()", 80)];
+      if (t.includes("health"))
+        return [s("request.get('/health')", 140), s("expect(status).toBe(200)", 50), s("expect(body.status).toBe('ok')", 50)];
+      if (t.includes("dashboard skeleton"))
+        return [s("goto('/dashboard')", 220), s("expect(skeleton).toBeVisible()", 60), s("expect(no auth flicker)", 90)];
+      if (t.includes("mobile menu"))
+        return [s("setViewportSize(375x667)", 60), s("tap('[aria-label=Menu]')", 120), s("expect(nav).toBeVisible()", 70), s("tap('[aria-label=Close]')", 110)];
+      if (t.includes("https"))
+        return [s("intercept network", 80), s("goto('/')", 220), s("expect(every url).toMatch(/^https:/)", 90)];
+      if (t.includes("service worker"))
+        return [s("goto('/')", 200), s("evaluate(navigator.serviceWorker.ready)", 280), s("expect(registration).toBeTruthy()", 60)];
+      if (t.includes("favicon"))
+        return [s("request.head('/favicon-32.png')", 120), s("request.head('/favicon-180.png')", 120), s("expect(all).toBe(200)", 50)];
+      if (t.includes("sitemap"))
+        return [s("request.get('/sitemap.xml')", 130), s("expect(contentType).toMatch(/xml/)", 60)];
+      if (t.includes("robots"))
+        return [s("request.get('/robots.txt')", 110), s("expect(body).toMatch(/Allow:/)", 60)];
+      if (t.includes("preview env"))
+        return [s("goto('/')", 200), s("expect(getByText(/preview/i)).toBeVisible()", 80)];
+      return [s("goto('/')", 200), s("waitForLoadState('domcontentloaded')", 240), s("expect(main).toBeVisible()", 80)];
+    }
+
+    case "Auth & MFA": {
+      if (t.includes("invalid password"))
+        return [s("goto('/auth')", 180), s("fill credentials (bad pass)", 160), s("click submit", 120), s("expect(error).toContainText(/invalid/)", 90)];
+      if (t.includes("lockout"))
+        return [s("loop x5 bad attempts", 520), s("expect(status).toBe(423)", 70), s("expect(error).toContainText(/locked/)", 80)];
+      if (t.includes("reset email"))
+        return [s("goto('/auth/forgot')", 180), s("fill email", 110), s("submit", 140), s("poll mailbox API", 320), s("expect(received).toBe(true)", 60)];
+      if (t.includes("token expires"))
+        return [s("request reset link", 200), s("advance clock 1h", 80), s("open link", 220), s("expect(error).toMatch(/expired/)", 80)];
+      if (t.includes("session persists"))
+        return [s("sign in", 320), s("reload()", 220), s("expect(getByText(/welcome/)).toBeVisible()", 90)];
+      if (t.includes("logout"))
+        return [s("click('button:has-text(Sign out)')", 140), s("expect(localStorage.token).toBeNull()", 70), s("expect(url).toMatch(/auth/)", 70)];
+      if (t.includes("totp enrollment"))
+        return [s("goto('/security/mfa')", 200), s("click 'Enable TOTP'", 120), s("expect(qrCode).toBeVisible()", 100)];
+      if (t.includes("totp verification") || t.includes("aal2"))
+        return [s("enter TOTP from secret", 240), s("submit", 140), s("expect(jwt.aal).toBe('aal2')", 90)];
+      if (t.includes("mfa challenge"))
+        return [s("goto('/admin')", 200), s("expect(redirect).toMatch(/mfa/)", 90), s("complete challenge", 320)];
+      if (t.includes("backup codes"))
+        return [s("goto('/security/mfa')", 200), s("click 'Regenerate codes'", 140), s("expect(codes.length).toBe(10)", 70)];
+      if (t.includes("oauth google"))
+        return [s("click 'Continue with Google'", 140), s("mock OAuth callback", 280), s("expect(url).toMatch(/dashboard/)", 90)];
+      if (t.includes("magic link"))
+        return [s("submit email", 160), s("fetch magic link", 220), s("open link", 240), s("expect(authed).toBe(true)", 80)];
+      if (t.includes("email change"))
+        return [s("goto('/profile')", 180), s("fill new email", 130), s("expect(prompt /reauth/)", 90)];
+      if (t.includes("concurrent sessions"))
+        return [s("goto('/security/sessions')", 200), s("expect(rows.length).toBeGreaterThan(1)", 80)];
+      if (t.includes("sign out everywhere"))
+        return [s("click 'Sign out everywhere'", 140), s("expect(refreshTokens).toHaveLength(0)", 90)];
+      if (t.includes("amr"))
+        return [s("decode JWT", 80), s("expect(amr).toContain('mfa')", 60)];
+      if (t.includes("brute-force") || t.includes("rate-limit"))
+        return [s("burst 50 reqs/s", 420), s("expect(status).toBe(429)", 70), s("expect(headers['retry-after']).toBeTruthy()", 70)];
+      if (t.includes("verification gate"))
+        return [s("sign in unverified", 320), s("expect(redirect).toMatch(/verify/)", 80)];
+      if (t.includes("role assignment"))
+        return [s("seed user as 'viewer'", 140), s("goto('/admin')", 180), s("expect(getByText(/forbidden/)).toBeVisible()", 80)];
+      if (t.includes("password policy") || t.includes("weak"))
+        return [s("fill password '123'", 110), s("expect(error /min length/)", 80)];
+      if (t.includes("long-lived") || t.includes("refresh"))
+        return [s("advance clock 50min", 80), s("trigger refresh", 220), s("expect(newToken).toBeTruthy()", 70)];
+      // valid sign-in default
+      return [s("goto('/auth')", 200), s("fill credentials", 160), s("click submit", 130), s("expect(url).toMatch(/dashboard/)", 110)];
+    }
+
+    case "Regression": {
+      if (t.includes("pagination"))
+        return [s("goto('/items?status=open')", 200), s("click next page", 140), s("expect(url).toContain('status=open')", 70)];
+      if (t.includes("date picker") || t.includes("dst"))
+        return [s("open date picker", 140), s("pick 2025-03-30", 160), s("expect(value.tz).toBe('Europe/Warsaw')", 80)];
+      if (t.includes("currency"))
+        return [s("set locale=pl-PL", 80), s("expect(price).toMatch(/1 234,56 zł/)", 90)];
+      if (t.includes("soft-deleted"))
+        return [s("seed deleted_at row", 140), s("goto('/items')", 180), s("expect(rows).not.toContain('Ghost')", 90)];
+      if (t.includes("bulk actions"))
+        return [s("select 3 of 10 rows", 180), s("click 'Archive'", 120), s("expect(archived).toBe(3)", 70)];
+      if (t.includes("drag-and-drop"))
+        return [s("dragTo row[2] -> row[0]", 280), s("reload()", 220), s("expect(order[0]).toBe('row-3')", 80)];
+      if (t.includes("debouncing"))
+        return [s("type('search', 'qa')", 140), s("expect(requests).toHaveLength(1)", 80)];
+      if (t.includes("empty state"))
+        return [s("goto('/items?empty=1')", 200), s("expect(getByAltText(/empty/)).toBeVisible()", 80)];
+      if (t.includes("toast"))
+        return [s("triggerToast()", 100), s("waitForTimeout(5100)", 5100), s("expect(toast).toBeHidden()", 60)];
+      if (t.includes("trap focus"))
+        return [s("openModal()", 140), s("press Tab x10", 220), s("expect(activeElement).toBeWithin(modal)", 80)];
+      if (t.includes("escape"))
+        return [s("openPopover()", 120), s("press Escape", 60), s("expect(popover).toBeHidden()", 60)];
+      if (t.includes("rtl"))
+        return [s("set dir=rtl", 80), s("goto('/')", 200), s("expect(layout).toMatchSnapshot('rtl')", 220)];
+      if (t.includes("clipboard"))
+        return [s("click 'Copy'", 100), s("expect(toast /copied/)", 80)];
+      if (t.includes("optimistic"))
+        return [s("intercept POST -> 500", 80), s("submit", 140), s("expect(item).toBeRolledBack()", 100)];
+      if (t.includes("autosave"))
+        return [s("type 200 chars", 240), s("reload()", 220), s("expect(textarea).toHaveValue(/.+/)", 80)];
+      if (t.includes("breadcrumb"))
+        return [s("goto('/a/b/c/d')", 200), s("expect(crumbs).toHaveCount(4)", 80)];
+      return [s("seed fixture", 140), s("perform user action", 220), s("expect(state).toMatchSnapshot()", 110)];
+    }
+
+    case "E2E Journeys": {
+      if (t.includes("sign up") || t.includes("onboarding"))
+        return [s("goto('/auth?mode=signup')", 200), s("complete signup", 380), s("verify email link", 280), s("walk onboarding wizard", 540), s("expect(url).toMatch(/dashboard/)", 100)];
+      if (t.includes("adds task"))
+        return [s("goto('/tasks')", 200), s("click 'New task'", 120), s("fill & save", 240), s("toggle complete", 140), s("expect(row).toHaveAttribute('data-done')", 70)];
+      if (t.includes("avatar"))
+        return [s("goto('/profile')", 200), s("setInputFiles avatar.png", 220), s("expect(img.src).toMatch(/avatar/)", 80)];
+      if (t.includes("invites"))
+        return [s("goto('/team')", 200), s("fill teammate email", 140), s("send invite", 180), s("expect(toast /sent/)", 70)];
+      if (t.includes("promotes"))
+        return [s("open member menu", 120), s("select 'Make moderator'", 140), s("expect(badge).toContainText('moderator')", 80)];
+      if (t.includes("exports"))
+        return [s("click 'Export CSV'", 160), s("waitForEvent('download')", 320), s("expect(file.size).toBeGreaterThan(0)", 60)];
+      if (t.includes("deletes account"))
+        return [s("goto('/settings/danger')", 200), s("type DELETE", 140), s("confirm", 180), s("expect(api /me).toBe(404)", 110)];
+      if (t.includes("subscribes"))
+        return [s("click 'Upgrade'", 130), s("fill test card 4242…", 240), s("submit", 200), s("expect(plan).toBe('premium')", 80)];
+      if (t.includes("cancels subscription"))
+        return [s("goto('/billing')", 200), s("click 'Cancel'", 140), s("confirm", 130), s("expect(status).toBe('canceled')", 70)];
+      if (t.includes("trash") || t.includes("restore"))
+        return [s("open trash", 160), s("click 'Restore'", 130), s("expect(item).toBeVisibleInList()", 80)];
+      if (t.includes("public link"))
+        return [s("click 'Share'", 130), s("toggle 'Anyone with link'", 120), s("copy URL", 80), s("incognito.goto(url)", 240), s("expect(doc).toBeVisible()", 80)];
+      if (t.includes("revokes"))
+        return [s("toggle off public link", 120), s("incognito.goto(url)", 240), s("expect(status).toBe(403)", 70)];
+      if (t.includes("merges"))
+        return [s("select 2 duplicates", 180), s("click 'Merge'", 130), s("expect(rows).toHaveCount(1)", 80)];
+      if (t.includes("schedules"))
+        return [s("create meeting", 220), s("reschedule +1d", 200), s("expect(start).toBe(tomorrow)", 80)];
+      if (t.includes("multi-step wizard"))
+        return [s("goto('/wizard')", 200), s("complete 4 steps", 620), s("submit", 200), s("expect(success).toBeVisible()", 90)];
+      if (t.includes("previous version"))
+        return [s("open history", 160), s("restore v1", 180), s("expect(content).toBe('v1')", 70)];
+      if (t.includes("webhook"))
+        return [s("create webhook -> mock URL", 200), s("trigger event", 180), s("expect(mock).toHaveBeenCalled()", 90)];
+      if (t.includes("sso"))
+        return [s("click 'Continue with SSO'", 140), s("complete SAML round-trip", 420), s("expect(url).toMatch(/dashboard/)", 90)];
+      return [s("sign in via storageState", 140), s("walk through journey", 620), s("assert end-to-end outcome", 180), s("verify backend via API", 210)];
+    }
+
+    case "Accessibility": {
+      if (t.includes("landing"))
+        return [s("goto('/')", 200), s("AxeBuilder.analyze()", 320), s("expect(violations).toEqual([])", 80)];
+      if (t.includes("dashboard"))
+        return [s("goto('/dashboard')", 220), s("AxeBuilder.analyze()", 340), s("expect(violations).toEqual([])", 80)];
+      if (t.includes("contrast"))
+        return [s("AxeBuilder.withRules(['color-contrast'])", 90), s("analyze()", 320), s("expect(0).toBe(violations.length)", 70)];
+      if (t.includes("form fields"))
+        return [s("locate all <input>", 110), s("expect(every).toHaveLabel()", 90)];
+      if (t.includes("buttons"))
+        return [s("locate('button')", 90), s("expect(every).toHaveAccessibleName()", 100)];
+      if (t.includes("alt text"))
+        return [s("locate('img')", 90), s("expect(every).toHaveAttribute('alt')", 90)];
+      if (t.includes("heading"))
+        return [s("collect h1-h6", 100), s("expect(order).toBeMonotonic()", 80)];
+      if (t.includes("skip-to-content"))
+        return [s("press Tab once", 60), s("expect(activeElement).toMatch(/skip/)", 70)];
+      if (t.includes("modal returns focus"))
+        return [s("openModal & close", 240), s("expect(activeElement).toBe(trigger)", 80)];
+      if (t.includes("live region"))
+        return [s("trigger toast", 100), s("expect(role=status).toContainText(/saved/)", 80)];
+      if (t.includes("keyboard-only"))
+        return [s("disable mouse", 40), s("press Tab/Enter through checkout", 540), s("expect(orderId).toBeTruthy()", 80)];
+      if (t.includes("focus ring"))
+        return [s("Tab through interactives", 320), s("screenshot focus rings", 220), s("expect(visible).toBe(true)", 60)];
+      if (t.includes("table"))
+        return [s("locate('table')", 90), s("expect(thead th).toHaveAttribute('scope')", 80)];
+      if (t.includes("tabs"))
+        return [s("locate('[role=tablist]')", 90), s("expect(roles).toMatch(/tab/)", 70)];
+      if (t.includes("combobox"))
+        return [s("type 'qu' into combobox", 130), s("expect(option /quick/).toBeVisible()", 90)];
+      if (t.includes("tooltip"))
+        return [s("focus button", 80), s("expect(tooltip).toBeVisible()", 80)];
+      if (t.includes("reduced-motion"))
+        return [s("emulateMedia({ reducedMotion: 'reduce' })", 60), s("expect(animations).toBeNone()", 110)];
+      if (t.includes("page title"))
+        return [s("goto('/about')", 200), s("expect(document.title).toContain('About')", 70)];
+      if (t.includes("aria-describedby"))
+        return [s("submit empty form", 140), s("expect(input).toHaveAttribute('aria-describedby')", 90)];
+      if (t.includes("lang attribute"))
+        return [s("expect(html.lang).toBe('en')", 60)];
+      return [s("inject axe", 90), s("analyze()", 320), s("expect(0 serious violations)", 80)];
+    }
+
+    case "Visual": {
+      const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      if (t.includes("hero"))
+        return [s("goto('/')", 200), s("waitForFonts", 180), s("toHaveScreenshot('hero.png')", 260)];
+      if (t.includes("pricing"))
+        return [s("goto('/pricing')", 200), s("toHaveScreenshot('pricing.png')", 260)];
+      if (t.includes("chart"))
+        return [s("goto('/dashboard')", 220), s("mask volatile data", 60), s("toHaveScreenshot('chart.png')", 280)];
+      if (t.includes("dark mode"))
+        return [s("emulateMedia({ colorScheme: 'dark' })", 60), s("toHaveScreenshot('dark.png')", 260)];
+      if (t.includes("iphone"))
+        return [s("use(devices['iPhone 14'])", 70), s("goto('/')", 220), s("toHaveScreenshot('iphone-14.png')", 260)];
+      if (t.includes("pixel"))
+        return [s("use(devices['Pixel 7'])", 70), s("goto('/')", 220), s("toHaveScreenshot('pixel-7.png')", 260)];
+      if (t.includes("print"))
+        return [s("emulateMedia({ media: 'print' })", 60), s("toHaveScreenshot('print.png')", 240)];
+      if (t.includes("email template"))
+        return [s("goto('/internal/email-preview')", 220), s("toHaveScreenshot('email.png')", 260)];
+      if (t.includes("modal"))
+        return [s("openConfirmDelete()", 180), s("toHaveScreenshot('modal.png')", 240)];
+      if (t.includes("toast"))
+        return [s("trigger 4 toast variants", 200), s("toHaveScreenshot('toasts.png')", 240)];
+      if (t.includes("loading state"))
+        return [s("intercept slow API", 80), s("goto('/items')", 200), s("toHaveScreenshot('table-loading.png')", 240)];
+      if (t.includes("avatar"))
+        return [s("render avatar without src", 100), s("toHaveScreenshot('avatar-fallback.png')", 220)];
+      return [s("waitForFonts ready", 180), s("mask volatile regions", 60), s(`toHaveScreenshot('${id}.png')`, 240)];
+    }
+
+    case "API": {
+      if (t.includes("/health"))
+        return [s("request.get('/api/health')", 140), s("expect(status).toBe(200)", 50), s("expect(body.status).toBe('ok')", 50)];
+      if (t.includes("/me"))
+        return [s("request.get('/api/me', { authed })", 160), s("Schema.parse(body)", 90)];
+      if (t.includes("post /tasks") || (t.includes("creates a task")))
+        return [s("request.post('/api/tasks', payload)", 180), s("expect(status).toBe(201)", 50), s("expect(body.id).toMatch(uuid)", 70)];
+      if (t.includes("patch /tasks"))
+        return [s("create fixture", 140), s("request.patch('/api/tasks/:id')", 160), s("expect(updated.title).toBe('new')", 70)];
+      if (t.includes("delete /tasks"))
+        return [s("request.delete('/api/tasks/:id')", 160), s("expect(getById).toBe(null)", 70)];
+      if (t.includes("paginates with cursor") || t.includes("cursor pagination"))
+        return [s("request.get('/api/tasks?limit=10')", 160), s("follow next cursor x3", 320), s("expect(unique ids)", 70)];
+      if (t.includes("oversized"))
+        return [s("post 11MB payload", 220), s("expect(status).toBe(413)", 60)];
+      if (t.includes("email format"))
+        return [s("put profile { email: 'oops' }", 160), s("expect(status).toBe(400)", 60)];
+      if (t.includes("401"))
+        return [s("request.get('/api/private')", 140), s("expect(status).toBe(401)", 60)];
+      if (t.includes("403"))
+        return [s("request.get('/api/admin', { authed: viewer })", 160), s("expect(status).toBe(403)", 60)];
+      if (t.includes("rate limit") || t.includes("429"))
+        return [s("burst 100 reqs", 420), s("expect(status).toBe(429)", 50), s("expect(headers['retry-after']).toBeTruthy()", 60)];
+      if (t.includes("etag"))
+        return [s("first GET -> grab ETag", 140), s("second GET with If-None-Match", 130), s("expect(status).toBe(304)", 50)];
+      if (t.includes("idempotency"))
+        return [s("post twice with same key", 280), s("expect(rows).toHaveCount(1)", 70)];
+      if (t.includes("webhook retries"))
+        return [s("inject 503 x3", 80), s("trigger event", 180), s("expect(attempts).toBe(4)", 70)];
+      if (t.includes("rfc 5988"))
+        return [s("GET first page", 140), s("expect(headers.link).toMatch(/rel=\"next\"/)", 80)];
+      if (t.includes("bulk endpoint"))
+        return [s("post 5 items (1 invalid)", 220), s("expect(report.success).toBe(4)", 70)];
+      if (t.includes("openapi"))
+        return [s("fetch openapi.json", 160), s("compare 20 sample responses", 360), s("expect(diffs).toEqual([])", 70)];
+      if (t.includes("rfc 7807"))
+        return [s("trigger 400", 140), s("expect(body).toMatchObject({ type, title, status })", 90)];
+      if (t.includes("empty body"))
+        return [s("request.patch('/api/tasks/:id', { data: {} })", 160), s("expect(status).toBe(400)", 60)];
+      if (t.includes("filtering"))
+        return [s("get(?status=open&status=blocked)", 160), s("expect(every).toMatchOneOf(...)", 80)];
+      if (t.includes("sorting"))
+        return [s("get(?sort=-createdAt,title)", 160), s("expect(order).toMatchExpected()", 80)];
+      return [s("build typed request", 40), s("send via APIRequestContext", 180), s("validate response with Zod", 90)];
+    }
+
+    case "Performance": {
+      if (t.includes("ttfb"))
+        return [s("request.get('/')", 130), s("read Server-Timing", 60), s("expect(ttfb).toBeLessThan(200)", 60)];
+      if (t.includes("lcp"))
+        return [s("goto('/')", 200), s("PerformanceObserver(LCP)", 360), s("expect(lcp).toBeLessThan(2500)", 70)];
+      if (t.includes("cls"))
+        return [s("goto('/')", 200), s("scroll & measure layout-shift", 380), s("expect(cls).toBeLessThan(0.1)", 70)];
+      if (t.includes("inp"))
+        return [s("goto('/dashboard')", 220), s("simulate 20 interactions", 420), s("expect(inp).toBeLessThan(200)", 70)];
+      if (t.includes("bundle"))
+        return [s("collect main.js size", 100), s("expect(gzipped).toBeLessThan(250 * 1024)", 60)];
+      if (t.includes("responsive sizes"))
+        return [s("locate('img.lcp')", 90), s("expect(srcset).toMatch(/\\dx/)", 60)];
+      if (t.includes("p95"))
+        return [s("k6 run 50 VUs / 30s", 540), s("expect(p95).toBeLessThan(500)", 70)];
+      if (t.includes("p99"))
+        return [s("k6 run 200 VUs / 60s", 600), s("expect(p99).toBeLessThan(1000)", 70)];
+      if (t.includes("error rate"))
+        return [s("stress 500 VUs", 580), s("expect(errorRate).toBeLessThan(0.01)", 70)];
+      if (t.includes("memory leak"))
+        return [s("loop navigate x1000", 920), s("expect(heapDelta).toBeLessThan(20MB)", 80)];
+      if (t.includes("hydration"))
+        return [s("goto('/')", 200), s("await hydration mark", 320), s("expect(hydrationMs).toBeLessThan(1000)", 70)];
+      if (t.includes("prefetch"))
+        return [s("hover next link", 100), s("click after 300ms", 320), s("expect(navMs).toBeLessThan(150)", 70)];
+      if (t.includes("long task"))
+        return [s("PerformanceObserver(longtask)", 90), s("goto('/')", 220), s("expect(every duration).toBeLessThan(50)", 70)];
+      if (t.includes("service worker"))
+        return [s("warm SW cache", 200), s("hard reload", 240), s("expect(repeatLcp).toBeLessThan(1500)", 70)];
+      if (t.includes("critical css"))
+        return [s("fetch raw HTML", 130), s("expect(<style>).toContain(above-fold)", 70)];
+      if (t.includes("server-timing"))
+        return [s("request.get('/')", 130), s("expect(headers['server-timing']).toBeTruthy()", 60)];
+      return [s("startTracing()", 60), s("drive scenario", 540), s("assert Web Vitals thresholds", 120)];
+    }
+
+    case "Security": {
+      if (t.includes("csp"))
+        return [s("request.get('/')", 130), s("expect(csp).toMatch(/default-src 'self'/)", 80)];
+      if (t.includes("x-frame"))
+        return [s("request.get('/')", 130), s("expect(headers['x-frame-options']).toBe('DENY')", 70)];
+      if (t.includes("strict-transport") || t.includes("hsts"))
+        return [s("request.get('/')", 130), s("expect(hsts).toMatch(/max-age=\\d{7,}/)", 70)];
+      if (t.includes("mixed content"))
+        return [s("collect all asset URLs", 140), s("expect(every).toMatch(/^https:/)", 70)];
+      if (t.includes("reflected xss"))
+        return [s("goto('/?q=<script>x</script>')", 200), s("expect(html).not.toContain('<script>x')", 80)];
+      if (t.includes("stored xss"))
+        return [s("submit comment with <script>", 220), s("reload()", 220), s("expect(html).not.toContain('<script>')", 80)];
+      if (t.includes("sql injection"))
+        return [s("search ' OR 1=1 --", 160), s("expect(rows).toHaveLength(0)", 70)];
+      if (t.includes("csrf"))
+        return [s("login twice", 320), s("expect(csrf1).not.toBe(csrf2)", 70)];
+      if (t.includes("cookies"))
+        return [s("login", 240), s("expect(cookie).toMatchObject({ secure, httpOnly, sameSite })", 100)];
+      if (t.includes("user existence"))
+        return [s("login known vs unknown email", 280), s("expect(latency.diff).toBeLessThan(50ms)", 80), s("expect(message).toBeIdentical()", 60)];
+      if (t.includes("alg=none"))
+        return [s("forge JWT { alg: none }", 100), s("request.get('/api/me', token)", 160), s("expect(status).toBe(401)", 60)];
+      if (t.includes("open redirect"))
+        return [s("goto('/login?next=//evil.com')", 200), s("login", 280), s("expect(url.host).toBe(baseHost)", 70)];
+      if (t.includes("path traversal"))
+        return [s("get('/files/../../etc/passwd')", 160), s("expect(status).toBe(400)", 60)];
+      if (t.includes("framework version") || t.includes("hides"))
+        return [s("request.get('/')", 130), s("expect(headers['x-powered-by']).toBeUndefined()", 70)];
+      if (t.includes("idor") || t.includes("insecure direct"))
+        return [s("get /api/users/1/private as user 2", 180), s("expect(status).toBe(403)", 60)];
+      if (t.includes("subresource integrity") || t.includes("sri"))
+        return [s("locate('script[src^=http]')", 110), s("expect(every).toHaveAttribute('integrity')", 80)];
+      if (t.includes("graphql"))
+        return [s("post '{ __schema { types { name } } }'", 200), s("expect(errors[0]).toMatch(/disabled/)", 70)];
+      return [s("send crafted request", 160), s("assert headers / response", 90)];
+    }
+
+    case "Mobile": {
+      if (t.includes("iphone se"))
+        return [s("use(devices['iPhone SE'])", 70), s("goto('/auth')", 200), s("complete login", 360), s("expect(url).toMatch(/dashboard/)", 80)];
+      if (t.includes("iphone 14"))
+        return [s("use(devices['iPhone 14'])", 70), s("goto('/auth')", 200), s("complete login", 360), s("expect(url).toMatch(/dashboard/)", 80)];
+      if (t.includes("pixel"))
+        return [s("use(devices['Pixel 7'])", 70), s("goto('/dashboard')", 220), s("expect(getByRole('main')).toBeVisible()", 80)];
+      if (t.includes("galaxy"))
+        return [s("use(devices['Galaxy S22'])", 70), s("complete checkout", 480), s("expect(orderId).toBeTruthy()", 80)];
+      if (t.includes("ipad"))
+        return [s("use(devices['iPad Pro 11'])", 70), s("goto('/')", 220), s("expect(splitView).toBeVisible()", 80)];
+      if (t.includes("mobile menu"))
+        return [s("setViewportSize(375x667)", 60), s("tap menu", 110), s("expect(nav).toBeVisible()", 70), s("tap close", 100)];
+      if (t.includes("pull-to-refresh"))
+        return [s("dispatch touchstart/move", 220), s("expect(list).toHaveBeenRefetched()", 100)];
+      if (t.includes("touch targets"))
+        return [s("locate interactive elements", 140), s("expect(every).toHaveSize({ w: >=44, h: >=44 })", 100)];
+      if (t.includes("zoom-on-focus"))
+        return [s("inspect <meta viewport>", 80), s("expect(content).toContain('user-scalable')", 60)];
+      if (t.includes("keyboard"))
+        return [s("focus input near bottom", 120), s("expect(input).toBeInViewport()", 80)];
+      if (t.includes("offline"))
+        return [s("setOffline(true)", 60), s("expect(getByText(/offline/)).toBeVisible()", 80)];
+      if (t.includes("camera"))
+        return [s("trigger getUserMedia", 100), s("expect(prompt).toBeVisible()", 80)];
+      if (t.includes("geolocation"))
+        return [s("trigger geolocation.getCurrentPosition", 100), s("expect(prompt).toBeVisible()", 80)];
+      if (t.includes("deep link"))
+        return [s("goto('app://item/42')", 200), s("expect(url.pathname).toBe('/items/42')", 70)];
+      return [s("use device descriptor", 120), s("run flow", 480), s("assert layout & a11y", 110)];
+    }
+
+    case "Compliance (21 CFR Part 11)": {
+      if (t.includes("user, action") || t.includes("audit log records"))
+        return [s("approve record", 220), s("query audit_log", 140), s("expect(entry).toMatchObject({ user, action, before, after })", 110)];
+      if (t.includes("hash chain") || t.includes("tamper-evident"))
+        return [s("fetch last 100 audit rows", 200), s("recompute hash chain", 240), s("expect(chain).toBeIntact()", 80)];
+      if (t.includes("re-authentication"))
+        return [s("click 'Sign'", 120), s("expect(prompt /password/)", 80)];
+      if (t.includes("meaning"))
+        return [s("sign with meaning='approval'", 220), s("expect(audit.meaning).toBe('approval')", 70)];
+      if (t.includes("trusted time"))
+        return [s("sign record", 200), s("compare against NTP time", 160), s("expect(skew).toBeLessThan(2s)", 70)];
+      if (t.includes("superseded") || t.includes("cannot be deleted"))
+        return [s("attempt DELETE /records/:id", 140), s("expect(status).toBe(405)", 60)];
+      if (t.includes("least privilege"))
+        return [s("call admin endpoint as viewer", 160), s("expect(status).toBe(403)", 60)];
+      if (t.includes("password expiry"))
+        return [s("set tenant.password_max_age=30d", 140), s("advance clock 31d", 80), s("expect(forced rotation)", 80)];
+      if (t.includes("idle session"))
+        return [s("authenticate", 240), s("idle 16min", 100), s("perform action", 140), s("expect(status).toBe(401)", 60)];
+      if (t.includes("validation report"))
+        return [s("trigger /reports/validation", 200), s("expect(pdf.size).toBeGreaterThan(10kb)", 80)];
+      if (t.includes("encrypted at rest"))
+        return [s("describe backup KMS key", 140), s("expect(algorithm).toBe('AES256')", 70)];
+      if (t.includes("restore from backup"))
+        return [s("trigger restore drill", 320), s("expect(rowCount).toMatchProd(±1%)", 90)];
+      if (t.includes("pii export"))
+        return [s("export user payload", 220), s("expect(payload).not.toContain('ssn')", 80)];
+      if (t.includes("checksum"))
+        return [s("read record + checksum", 160), s("expect(sha256(body)).toBe(stored)", 80)];
+      if (t.includes("approval workflow"))
+        return [s("submit as user A", 160), s("approve as same user A", 140), s("expect(error /distinct reviewer/)", 80)];
+      if (t.includes("change control"))
+        return [s("save change without ticket", 140), s("expect(error /ticket required/)", 70)];
+      if (t.includes("training"))
+        return [s("query training_log for user", 160), s("expect(latest).toBeWithin('1y')", 70)];
+      if (t.includes("periodic review"))
+        return [s("query review_schedule", 140), s("expect(nextDue).toBeAfter(now)", 60)];
+      return [s("perform audited action", 220), s("query audit_log", 140), s("assert immutability + signature", 120)];
+    }
+
+    case "Chaos / Resilience": {
+      if (t.includes("500ms latency"))
+        return [s("inject latency=500ms", 240), s("goto('/')", 320), s("expect(skeleton).toBeVisible()", 80), s("expect(main).toBeVisible(t<3s)", 200)];
+      if (t.includes("2s latency"))
+        return [s("inject latency=2000ms", 240), s("goto('/')", 320), s("expect(loading state)", 100), s("expect(main).toBeVisible(t<6s)", 240)];
+      if (t.includes("transient 503") || t.includes("retry succeeds"))
+        return [s("inject 503 first 2 of N", 80), s("trigger request", 180), s("expect(finalStatus).toBe(200)", 60)];
+      if (t.includes("circuit breaker opens"))
+        return [s("inject 100% errors", 80), s("burst 20 requests", 280), s("expect(state).toBe('open')", 70)];
+      if (t.includes("half-opens"))
+        return [s("wait cooldown", 320), s("send probe request", 160), s("expect(state).toBe('closed')", 70)];
+      if (t.includes("bulkhead"))
+        return [s("saturate dep A pool", 320), s("call dep B", 180), s("expect(B.latency).toBeNormal()", 80)];
+      if (t.includes("fallback ui"))
+        return [s("kill upstream", 80), s("goto('/widget')", 240), s("expect(getByText(/temporarily unavailable/)).toBeVisible()", 90)];
+      if (t.includes("cache stampede"))
+        return [s("flush cache key", 80), s("burst 50 concurrent reads", 360), s("expect(originHits).toBe(1)", 70)];
+      if (t.includes("pod restart"))
+        return [s("send 100 in-flight reqs", 320), s("kill -SIGTERM api pod", 200), s("expect(no 5xx)", 90)];
+      if (t.includes("failover"))
+        return [s("promote replica", 380), s("send writes", 240), s("expect(all 200 within 30s)", 90)];
+      if (t.includes("read-only"))
+        return [s("toggle read_only=true", 100), s("goto('/')", 200), s("expect(banner).toBeVisible()", 80)];
+      if (t.includes("background jobs"))
+        return [s("enqueue 50 jobs", 220), s("kill worker", 100), s("restart worker", 220), s("expect(processed).toBe(50)", 80)];
+      if (t.includes("idempotent writes"))
+        return [s("post with idempotency key x3", 280), s("expect(rows).toHaveCount(1)", 70)];
+      if (t.includes("backpressure"))
+        return [s("burst 1000 req/s", 540), s("expect(every fail).toBe(429)", 80)];
+      return [s("inject fault via /chaos-experiment", 240), s("drive user flow", 360), s("assert graceful degradation", 140), s("restore baseline", 80)];
+    }
+  }
 }
 
 function buildCode(t: { id: string; title: string; category: PwCategory; tags: string[] }): string {
@@ -550,7 +956,7 @@ function generate(): PwTest[] {
         title,
         tags: catDef.tags,
         expected: pickExpected(catIndex, i),
-        steps: buildSteps(catDef.name),
+        steps: buildSteps(catDef.name, title),
         code: "",
       };
       t.code = buildCode(t);
