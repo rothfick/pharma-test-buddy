@@ -24,10 +24,55 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaVerifying, setMfaVerifying] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
+    if (!user) return;
+    // After signin, check whether session needs MFA elevation.
+    (async () => {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel === aal?.nextLevel) {
+        navigate("/", { replace: true });
+        return;
+      }
+      // nextLevel === aal2 but current === aal1 → need TOTP challenge
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totp = (factors?.totp ?? []).find((f) => f.status === "verified");
+      if (!totp) {
+        navigate("/", { replace: true });
+        return;
+      }
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+      if (chErr || !ch) {
+        toast.error(chErr?.message ?? "Could not start MFA challenge");
+        await supabase.auth.signOut();
+        return;
+      }
+      setMfaFactorId(totp.id);
+      setMfaChallengeId(ch.id);
+    })();
   }, [user, navigate]);
+
+  const verifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaFactorId || !mfaChallengeId) return;
+    setMfaVerifying(true);
+    const { error } = await supabase.auth.mfa.verify({
+      factorId: mfaFactorId,
+      challengeId: mfaChallengeId,
+      code: mfaCode.trim(),
+    });
+    setMfaVerifying(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("MFA verified");
+    navigate("/", { replace: true });
+  };
 
   const validate = () => {
     const e = emailSchema.safeParse(email);
