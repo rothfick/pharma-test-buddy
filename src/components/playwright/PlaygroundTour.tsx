@@ -59,6 +59,11 @@ const PAGE_LABELS: Record<string, string> = {
   "/playground/security": "Auth & security",
   "/playground/a11y": "A11y & i18n",
   "/playground/legacy": "Legacy targets",
+  "/compliance": "Compliance — Overview",
+  "/compliance/audit-trail": "Compliance — Audit Trail",
+  "/compliance/e-signatures": "Compliance — E-Signatures",
+  "/compliance/data-integrity": "Compliance — ALCOA+",
+  "/compliance/validation": "Compliance — IQ/OQ/PQ",
 };
 
 export function PlaygroundTour() {
