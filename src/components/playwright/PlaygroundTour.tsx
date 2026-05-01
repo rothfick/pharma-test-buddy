@@ -51,6 +51,7 @@ interface LogLine {
 }
 
 const PAGE_LABELS: Record<string, string> = {
+  "/auth": "Sign-in",
   "/playground": "Overview",
   "/playground/interactions": "UI interactions",
   "/playground/async": "Async & race",
