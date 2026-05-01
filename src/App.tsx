@@ -30,6 +30,7 @@ import AIRag from "./pages/ai/RagPage";
 import AIEvals from "./pages/ai/EvalsPage";
 import AIGuardrails from "./pages/ai/GuardrailsPage";
 import AIPromptPlayground from "./pages/ai/PromptPlayground";
+import AICostTracker from "./pages/ai/CostTracker";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -76,6 +77,7 @@ const App = () => (
                 <Route path="evals" element={<AIEvals />} />
                 <Route path="guardrails" element={<AIGuardrails />} />
                 <Route path="prompt-playground" element={<AIPromptPlayground />} />
+                <Route path="cost-tracker" element={<AICostTracker />} />
               </Route>
               <Route path="/profile" element={<Profile />} />
             </Route>
