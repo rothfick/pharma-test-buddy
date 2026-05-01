@@ -130,11 +130,13 @@ export default function PlaywrightStarter() {
                 <span className="text-gradient-primary">Starter Kit</span>
               </h1>
               <p className="text-muted-foreground">
-                <strong className="text-foreground">{TOTAL_TESTS} curated tests</strong> across{" "}
+                <strong className="text-foreground">{TOTAL_TESTS} testów Playwright</strong> w{" "}
                 <strong className="text-foreground">{PLAYWRIGHT_CATEGORIES.length}</strong>{" "}
-                categories — każdy odpalany <strong className="text-foreground">na żywo</strong> w prawdziwym
-                oknie aplikacji: kliknięcia, wypełnianie formularzy, walidacja i nawigacja.
-                Pełen kod Playwright + ZIP starter kit do pobrania.
+                kategoriach — każdy z pełnym kodem TypeScript napisanym z najwyższą precyzją:
+                Smoke, Auth & MFA, E2E, A11y, Visual, API, Performance, Security, Mobile,
+                Compliance (21 CFR Part 11) i Chaos. Wybrane scenariusze odpalane na żywo
+                w karcie <strong className="text-foreground">Live Runner</strong>.
+                Pełen ZIP starter kit do pobrania.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="lg" onClick={download} disabled={downloading} data-testid="download-zip" className="shadow-elegant">
