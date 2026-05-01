@@ -63,6 +63,80 @@ async function expectThrows(fn: () => Promise<unknown>, msg = "expected to throw
   if (!threw) throw new Error(msg);
 }
 
+// Wait for React commits to flush.
+async function tick(ms = 50): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+// Mount <PlaywrightStarter/> in a detached container with the providers it
+// needs (router + react-query). Returns the container and an unmount fn.
+async function mountPlaywrightStarter(): Promise<{
+  container: HTMLDivElement;
+  unmount: () => void;
+}> {
+  const [{ createRoot }, React, { MemoryRouter }, { QueryClient, QueryClientProvider }, { default: PlaywrightStarter }] =
+    await Promise.all([
+      import("react-dom/client"),
+      import("react"),
+      import("react-router-dom"),
+      import("@tanstack/react-query"),
+      import("@/pages/PlaywrightStarter"),
+    ]);
+
+  const container = document.createElement("div");
+  container.setAttribute("data-e2e-mount", "playwright-starter");
+  container.style.position = "fixed";
+  container.style.left = "-99999px";
+  container.style.top = "0";
+  container.style.width = "1280px";
+  container.style.height = "800px";
+  document.body.appendChild(container);
+
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const root = createRoot(container);
+  root.render(
+    React.createElement(
+      QueryClientProvider,
+      { client: qc },
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/playwright-starter"] },
+        React.createElement(PlaywrightStarter),
+      ),
+    ),
+  );
+  // Let initial render commit.
+  await tick(120);
+  return {
+    container,
+    unmount: () => {
+      root.unmount();
+      container.parentElement?.removeChild(container);
+    },
+  };
+}
+
+// Switch to the "Test Catalog" tab and select the first test so the
+// RunWithPreview stage mounts in the DOM.
+async function openFirstTestDetail(
+  container: HTMLDivElement,
+  log: (line: string) => void,
+): Promise<void> {
+  // Tabs use role=tab; pick the catalog tab by its visible text.
+  const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+  const catalogTab = tabs.find((t) => /test catalog/i.test(t.textContent ?? ""));
+  if (catalogTab) {
+    catalogTab.click();
+    await tick(80);
+    log("switched to Test Catalog tab");
+  }
+  // The detail card auto-selects the first test. Just wait for the stage.
+  for (let i = 0; i < 20; i++) {
+    if (container.querySelector('[data-testid="preview-stage"]')) return;
+    await tick(50);
+  }
+}
+
 // ---------- cases ----------
 
 const CASES: E2ECase[] = [
