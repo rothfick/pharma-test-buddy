@@ -404,6 +404,93 @@ const complianceSteps: TourStep[] = [
   },
 ];
 
+// ---------- 111 challenges (auto-generated tour steps) ----------
+
+// Map every challenge category to the route where its bonus section lives.
+const CHALLENGE_ROUTE: Record<Challenge["category"], string> = {
+  interactions: "/playground/interactions",
+  async: "/playground/async",
+  files: "/playground/files",
+  security: "/playground/security",
+  a11y: "/playground/a11y",
+  legacy: "/playground/legacy",
+  misc: "/playground/all", // bonuses live in the All Challenges page
+};
+
+function interactionForChallenge(c: Challenge): Cmd[] {
+  const t = c.testId;
+  switch (c.kind) {
+    case "click-counter":
+      return [CLICK(`[data-testid="${t}-btn"]`), W(120), CLICK(`[data-testid="${t}-btn"]`), W(120)];
+    case "toggle":
+      return [CLICK(`[data-testid="${t}-switch"]`), W(150)];
+    case "checkbox":
+      return [CLICK(`[data-testid="${t}-cb"]`), W(150)];
+    case "radio-group":
+      return [CLICK(`[data-testid="${t}-opt-b"]`), W(150)];
+    case "text-input":
+      return [FILL(`[data-testid="${t}-input"]`, "qa"), W(150)];
+    case "number-input":
+      return [CLICK(`[data-testid="${t}-inc"]`), W(80), CLICK(`[data-testid="${t}-inc"]`), W(80)];
+    case "select":
+      return [CLICK(`[data-testid="${t}-trigger"]`), W(250), CLICK(`[data-testid="${t}-item-gamma"]`), W(150)];
+    case "tabs":
+      return [CLICK(`[data-testid="${t}-tab-2"]`), W(150)];
+    case "accordion":
+      return [CLICK(`[data-testid="${t}-trigger"]`), W(200)];
+    case "dialog":
+      return [CLICK(`[data-testid="${t}-open`.concat(`"]`)), W(300), CLICK(`[data-testid="${t}-cancel"]`), W(200)];
+    case "popover":
+      return [CLICK(`[data-testid="${t}-trigger"]`), W(250)];
+    case "tooltip-hover":
+      return [SCROLL(`[data-testid="${t}-trigger"]`), W(250)];
+    case "color-picker":
+      return [CLICK(`[data-testid="${t}-swatch-1"]`), W(150)];
+    case "rating":
+      return [CLICK(`[data-testid="${t}-star-4"]`), W(150)];
+    case "copy-button":
+      return [CLICK(`[data-testid="${t}-copy"]`), W(200)];
+    case "delayed-button":
+      return [W(700), CLICK(`[data-testid="${t}-btn"]`), W(150)];
+    case "confirm-button":
+      return [CLICK(`[data-testid="${t}-btn"]`), W(200), CLICK(`[data-testid="${t}-btn"]`), W(200)];
+    case "long-press":
+      // The driver lacks a real long-press primitive, so we just highlight.
+      return [SCROLL(`[data-testid="${t}-btn"]`), W(300)];
+    case "scroll-into-view":
+      return [SCROLL(`[data-testid="${t}-target"]`), W(200)];
+    case "lazy-image":
+      return [W(600), SEE(`[data-testid="${t}-img"]`, 4000)];
+    case "stepper-form":
+      return [CLICK(`[data-testid="${t}-next"]`), W(120), CLICK(`[data-testid="${t}-next"]`), W(120)];
+    case "filter-list":
+      return [FILL(`[data-testid="${t}-input"]`, "apple"), W(200)];
+  }
+}
+
+function buildChallengeSteps(): TourStep[] {
+  const steps: TourStep[] = [];
+  let currentRoute: string | null = null;
+  for (const c of CHALLENGES) {
+    const route = CHALLENGE_ROUTE[c.category];
+    const cmds: Cmd[] = [];
+    if (route !== currentRoute) {
+      cmds.push(GOTO(route), W(500));
+      currentRoute = route;
+    }
+    cmds.push(SCROLL(`[data-testid="${c.testId}"]`), W(150));
+    cmds.push(...interactionForChallenge(c));
+    steps.push({
+      page: route,
+      label: `Challenge ${c.id}/111 · ${CATEGORY_LABELS[c.category]} · ${c.label}`,
+      cmds,
+    });
+  }
+  return steps;
+}
+
+const challengeSteps: TourStep[] = buildChallengeSteps();
+
 // Final flourish: walk back to overview.
 const finaleSteps: TourStep[] = [
   {
@@ -423,6 +510,7 @@ export const PLAYGROUND_TOUR: TourStep[] = [
   ...a11ySteps,
   ...legacySteps,
   ...complianceSteps,
+  ...challengeSteps,
   ...finaleSteps,
 ];
 
