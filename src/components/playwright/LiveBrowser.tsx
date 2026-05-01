@@ -60,10 +60,10 @@ export function LiveBrowser({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border bg-zinc-950 text-zinc-100 shadow-xl",
+        "flex flex-col overflow-hidden rounded-xl border bg-zinc-950 text-zinc-100 shadow-xl",
         className,
       )}
-      style={{ aspectRatio: `${1 / VIEWPORT_RATIO}` }}
+      style={className?.includes("h-full") ? undefined : { aspectRatio: `${1 / VIEWPORT_RATIO}` }}
     >
       {/* Browser chrome */}
       <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900 px-3 py-2">
