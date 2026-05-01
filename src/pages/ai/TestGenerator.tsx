@@ -88,9 +88,13 @@ export default function TestGenerator() {
           try {
             const j = JSON.parse(data);
             const delta = j.choices?.[0]?.delta?.content;
-            if (typeof delta === "string") {
+            const reasoning = j.choices?.[0]?.delta?.reasoning;
+            if (typeof delta === "string" && delta.length > 0) {
               acc += delta;
               setOutput(acc);
+            } else if (typeof reasoning === "string" && reasoning.length > 0 && acc.length === 0) {
+              // show thinking indicator until real content starts
+              setOutput("// 🧠 Model myśli…\n// " + reasoning.split("\n")[0].slice(0, 120));
             }
           } catch { /* partial */ }
         }
