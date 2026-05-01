@@ -48,7 +48,7 @@ import {
   type TourStep,
 } from "@/lib/playground-tour";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
-import { Compass as CompassIcon } from "lucide-react";
+
 import { ScreenRecorder, type RecorderResult } from "@/lib/screen-recorder";
 
 type StepStatus = "idle" | "running" | "pass" | "fail" | "skipped";
