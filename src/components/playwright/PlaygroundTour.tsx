@@ -310,13 +310,20 @@ export function PlaygroundTour() {
   }
 
   // Group steps by page for the right-hand panel.
+  // Catalog suite gets its own dedicated group so the 224 tests don't drown
+  // out the playground sections in the side panel.
   const groupedSteps = useMemo(() => {
     const map = new Map<string, { idx: number; step: TourStep }[]>();
     PLAYGROUND_TOUR.forEach((step, idx) => {
       if (!map.has(step.page)) map.set(step.page, []);
       map.get(step.page)!.push({ idx, step });
     });
-    return Array.from(map.entries());
+    const tourPart = Array.from(map.entries());
+    const catalog = CATALOG_SUITE_STEPS.map((step, j) => ({
+      idx: PLAYGROUND_TOUR.length + j,
+      step,
+    }));
+    return [...tourPart, ["__catalog__", catalog] as [string, typeof catalog]];
   }, []);
 
   return (
