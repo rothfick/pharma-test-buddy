@@ -216,11 +216,16 @@ export class LiveDriver {
   async goto(path: string, timeoutMs = this.defaultTimeoutMs) {
     const url = path.startsWith("http") ? path : `${this.origin}${path}`;
     return new Promise<void>((resolve, reject) => {
-      const onLoad = () => {
+      const onLoad = async () => {
         this.iframe.removeEventListener("load", onLoad);
         clearTimeout(timer);
-        // small settle
         this.onEvent({ type: "url", url: this.win?.location.pathname ?? path });
+        // Wait for the auth loader to disappear (ProtectedRoute hydration).
+        await this.pollUntil(() => {
+          const d = this.doc;
+          if (!d) return false;
+          return !d.querySelector('[data-testid="auth-loading"]');
+        }, 8000);
         setTimeout(resolve, 200);
       };
       const timer = setTimeout(() => {
