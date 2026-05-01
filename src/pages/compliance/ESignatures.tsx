@@ -27,6 +27,8 @@ type Sig = {
 export default function ESignatures() {
   const [sigs, setSigs] = useState<Sig[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isOAuth, setIsOAuth] = useState(false);
+  const [provider, setProvider] = useState<string>("email");
   const [form, setForm] = useState({
     entity_type: "task",
     entity_id: "",
@@ -34,6 +36,7 @@ export default function ESignatures() {
     meaning: "approval",
     reason: "",
     password: "",
+    confirmation: "",
     witness_email: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -50,11 +53,26 @@ export default function ESignatures() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const p = (user?.app_metadata?.provider as string) ?? "email";
+      setProvider(p);
+      setIsOAuth(p !== "email");
+    });
+  }, []);
 
   const sign = async () => {
-    if (!form.entity_id || !form.reason || !form.password) {
-      toast.error("Entity ID, reason and password are required");
+    if (!form.entity_id || !form.reason) {
+      toast.error("Entity ID and reason are required");
+      return;
+    }
+    if (isOAuth && form.confirmation.trim().toUpperCase() !== "I CONFIRM") {
+      toast.error('Type "I CONFIRM" to re-authenticate');
+      return;
+    }
+    if (!isOAuth && !form.password) {
+      toast.error("Password required");
       return;
     }
     setSubmitting(true);
@@ -66,7 +84,8 @@ export default function ESignatures() {
         action: form.action,
         meaning: form.meaning,
         reason: form.reason,
-        password: form.password,
+        password: isOAuth ? undefined : form.password,
+        confirmation: isOAuth ? form.confirmation : undefined,
         witness_email: form.witness_email || undefined,
       },
       headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
@@ -78,7 +97,7 @@ export default function ESignatures() {
       toast.error((res.data as any).error);
     } else {
       toast.success("Signed & recorded");
-      setForm({ ...form, password: "", reason: "" });
+      setForm({ ...form, password: "", confirmation: "", reason: "" });
       load();
     }
   };
@@ -124,10 +143,22 @@ export default function ESignatures() {
             <Label>Witness email (optional, dual-control)</Label>
             <Input value={form.witness_email} onChange={(e) => setForm({ ...form, witness_email: e.target.value })} data-testid="esig-witness" />
           </div>
-          <div>
-            <Label>Your password * (re-auth)</Label>
-            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} data-testid="esig-password" />
-          </div>
+          {isOAuth ? (
+            <div>
+              <Label>Type "I CONFIRM" * (OAuth re-auth via {provider})</Label>
+              <Input
+                value={form.confirmation}
+                onChange={(e) => setForm({ ...form, confirmation: e.target.value })}
+                placeholder="I CONFIRM"
+                data-testid="esig-confirmation"
+              />
+            </div>
+          ) : (
+            <div>
+              <Label>Your password * (re-auth)</Label>
+              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} data-testid="esig-password" />
+            </div>
+          )}
           <div className="md:col-span-2">
             <Button onClick={sign} disabled={submitting} data-testid="esig-submit">
               {submitting ? "Signing…" : "Sign & Record"}
