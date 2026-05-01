@@ -111,13 +111,13 @@ export function PlaygroundTour() {
 
   const completed = useMemo(() => {
     let n = 0;
-    for (let i = 0; i < TOUR_TOTAL_STEPS; i++) {
+    for (let i = 0; i < FULL_SUITE_TOTAL_STEPS; i++) {
       const s = statuses[i];
       if (s === "pass" || s === "fail" || s === "skipped") n++;
     }
     return n;
   }, [statuses]);
-  const progress = Math.round((completed / TOUR_TOTAL_STEPS) * 100);
+  const progress = Math.round((completed / FULL_SUITE_TOTAL_STEPS) * 100);
 
   const counts = useMemo(() => {
     let pass = 0, fail = 0, skipped = 0;
