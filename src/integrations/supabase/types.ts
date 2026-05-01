@@ -106,6 +106,102 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          current_hash: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          old_data: Json | null
+          prev_hash: string | null
+          reason: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          current_hash: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          prev_hash?: string | null
+          reason?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          current_hash?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          prev_hash?: string | null
+          reason?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      e_signatures: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          meaning: string
+          reason: string
+          signature_hash: string
+          signed_by: string
+          signed_by_email: string
+          witness_email: string | null
+          witness_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          meaning: string
+          reason: string
+          signature_hash: string
+          signed_by: string
+          signed_by_email: string
+          witness_email?: string | null
+          witness_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          meaning?: string
+          reason?: string
+          signature_hash?: string
+          signed_by?: string
+          signed_by_email?: string
+          witness_email?: string | null
+          witness_id?: string | null
+        }
+        Relationships: []
+      }
       feature_budgets: {
         Row: {
           created_at: string
@@ -461,6 +557,45 @@ export type Database = {
         }
         Relationships: []
       }
+      validation_runs: {
+        Row: {
+          created_at: string
+          description: string | null
+          evidence: Json | null
+          executed_at: string | null
+          executed_by: string | null
+          id: string
+          name: string
+          phase: Database["public"]["Enums"]["validation_phase"]
+          status: Database["public"]["Enums"]["validation_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          evidence?: Json | null
+          executed_at?: string | null
+          executed_by?: string | null
+          id?: string
+          name: string
+          phase: Database["public"]["Enums"]["validation_phase"]
+          status?: Database["public"]["Enums"]["validation_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          evidence?: Json | null
+          executed_at?: string | null
+          executed_by?: string | null
+          id?: string
+          name?: string
+          phase?: Database["public"]["Enums"]["validation_phase"]
+          status?: Database["public"]["Enums"]["validation_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       workflow_runs: {
         Row: {
           created_at: string
@@ -596,6 +731,8 @@ export type Database = {
       app_role: "admin" | "manager" | "user"
       task_priority: "low" | "medium" | "high" | "critical"
       task_status: "todo" | "in_progress" | "review" | "done"
+      validation_phase: "IQ" | "OQ" | "PQ"
+      validation_status: "pending" | "passed" | "failed" | "blocked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -726,6 +863,8 @@ export const Constants = {
       app_role: ["admin", "manager", "user"],
       task_priority: ["low", "medium", "high", "critical"],
       task_status: ["todo", "in_progress", "review", "done"],
+      validation_phase: ["IQ", "OQ", "PQ"],
+      validation_status: ["pending", "passed", "failed", "blocked"],
     },
   },
 } as const
