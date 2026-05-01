@@ -354,7 +354,7 @@ function assertMessageFor(t: PwTest, label: string, ok: boolean): string {
   if (/0 violations|wcag|a11y|accessib/i.test(title)) return "0 critical/serious violations";
   if (/csp|hsts|x-frame|header/i.test(title)) return "CSP, HSTS, XFO=DENY all present";
   if (/audit|signature|tamper/i.test(title)) return "audit row hashed + signed (prev_hash OK)";
-  if (/redirect|/dashboard/i.test(title)) return "URL matches /dashboard";
+  if (/redirect|dashboard/i.test(title)) return "URL matches /dashboard";
   if (/200|ok/i.test(title)) return "response.status() === 200";
   // Fallback — quote the step itself
   return label.replace(/^(assert|verify|check)\s+/i, "✓ ");
