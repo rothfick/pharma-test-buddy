@@ -956,7 +956,7 @@ function generate(): PwTest[] {
         title,
         tags: catDef.tags,
         expected: pickExpected(catIndex, i),
-        steps: buildSteps(catDef.name),
+        steps: buildSteps(catDef.name, title),
         code: "",
       };
       t.code = buildCode(t);
