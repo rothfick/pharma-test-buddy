@@ -68,7 +68,7 @@ export class LiveDriver {
     this.iframe = opts.iframe;
     this.origin = opts.origin;
     this.onEvent = opts.onEvent ?? (() => {});
-    this.defaultTimeoutMs = opts.defaultTimeoutMs ?? 6000;
+    this.defaultTimeoutMs = opts.defaultTimeoutMs ?? 15000;
     this.cancelRef = opts.cancelRef ?? { current: false };
   }
 
