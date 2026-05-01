@@ -274,6 +274,7 @@ export function PlaygroundTour() {
 
     setRunning(false);
     setActiveIdx(-1);
+    setExpanded(false); // auto-close the live preview when the tour ends
   }
 
   function handleDriverEvent(e: DriverEvent) {
