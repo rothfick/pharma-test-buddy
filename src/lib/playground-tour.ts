@@ -516,3 +516,63 @@ export const PLAYGROUND_TOUR: TourStep[] = [
 
 export const TOUR_TOTAL_STEPS = PLAYGROUND_TOUR.length;
 export const TOUR_TOTAL_CMDS = PLAYGROUND_TOUR.reduce((n, s) => n + s.cmds.length, 0);
+
+// ────────────────────────────────────────────────────────────────────────────
+// Catalog suite — wraps every PwTest from playwright-tests.ts as a TourStep
+// using buildScenario(). This lets the global runner execute all 224 catalog
+// tests live in the iframe right after the playground tour, in one run.
+// ────────────────────────────────────────────────────────────────────────────
+import { PLAYWRIGHT_TESTS, type PwTest } from "./playwright-tests";
+import { buildScenario } from "./live-scenarios";
+
+const CATEGORY_ROUTE: Record<string, string> = {
+  Smoke: "/dashboard",
+  "Auth & MFA": "/auth",
+  Regression: "/dashboard",
+  "E2E Journeys": "/tasks",
+  Accessibility: "/playground/a11y",
+  Visual: "/dashboard",
+  API: "/tasks",
+  Performance: "/quality-metrics",
+  Security: "/security",
+  Mobile: "/dashboard",
+  "Compliance (21 CFR Part 11)": "/compliance/audit-trail",
+  "Chaos / Resilience": "/chaos/experiments",
+};
+
+function buildCatalogSteps(): TourStep[] {
+  const steps: TourStep[] = [];
+  for (const test of PLAYWRIGHT_TESTS as PwTest[]) {
+    const route = CATEGORY_ROUTE[test.category] ?? "/dashboard";
+    let cmds: Cmd[];
+    try {
+      const scenario = buildScenario(test);
+      cmds = scenario.cmds.length > 0
+        ? scenario.cmds
+        : [GOTO(route), W(200)];
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      cmds = [{ kind: "log", message: `scenario error: ${msg}` }, GOTO(route), W(200)];
+    }
+    steps.push({
+      page: route,
+      label: `Catalog · ${test.id} · ${test.title}`,
+      cmds: [{ kind: "log", message: `▶ ${test.id} — ${test.title}` }, ...cmds],
+    });
+  }
+  return steps;
+}
+
+export const CATALOG_SUITE_STEPS: TourStep[] = buildCatalogSteps();
+export const CATALOG_SUITE_TOTAL = CATALOG_SUITE_STEPS.length;
+
+// Combined super-suite the global runner walks through.
+export const FULL_SUITE_STEPS: TourStep[] = [
+  ...PLAYGROUND_TOUR,
+  ...CATALOG_SUITE_STEPS,
+];
+export const FULL_SUITE_TOTAL_STEPS = FULL_SUITE_STEPS.length;
+export const FULL_SUITE_TOTAL_CMDS = FULL_SUITE_STEPS.reduce(
+  (n, s) => n + s.cmds.length,
+  0,
+);

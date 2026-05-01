@@ -37,7 +37,12 @@ import { snapshotTasks, rollbackTasks } from "@/lib/live-rollback";
 import {
   PLAYGROUND_TOUR,
   TOUR_TOTAL_STEPS,
-  TOUR_TOTAL_CMDS,
+  
+  CATALOG_SUITE_STEPS,
+  CATALOG_SUITE_TOTAL,
+  FULL_SUITE_STEPS,
+  FULL_SUITE_TOTAL_STEPS,
+  FULL_SUITE_TOTAL_CMDS,
   type TourStep,
 } from "@/lib/playground-tour";
 import { ScreenRecorder, type RecorderResult } from "@/lib/screen-recorder";
@@ -64,6 +69,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/compliance/e-signatures": "Compliance — E-Signatures",
   "/compliance/data-integrity": "Compliance — ALCOA+",
   "/compliance/validation": "Compliance — IQ/OQ/PQ",
+  __catalog__: `Test Catalog (${CATALOG_SUITE_TOTAL})`,
 };
 
 export function PlaygroundTour() {
@@ -105,13 +111,13 @@ export function PlaygroundTour() {
 
   const completed = useMemo(() => {
     let n = 0;
-    for (let i = 0; i < TOUR_TOTAL_STEPS; i++) {
+    for (let i = 0; i < FULL_SUITE_TOTAL_STEPS; i++) {
       const s = statuses[i];
       if (s === "pass" || s === "fail" || s === "skipped") n++;
     }
     return n;
   }, [statuses]);
-  const progress = Math.round((completed / TOUR_TOTAL_STEPS) * 100);
+  const progress = Math.round((completed / FULL_SUITE_TOTAL_STEPS) * 100);
 
   const counts = useMemo(() => {
     let pass = 0, fail = 0, skipped = 0;
@@ -151,7 +157,7 @@ export function PlaygroundTour() {
     setRunning(true);
     setExpanded(true); // auto-expand the live preview to 75%
     cancelRef.current = { current: false };
-    pushLog({ text: `▶ Playground tour starting (${TOUR_TOTAL_STEPS} steps, ${TOUR_TOTAL_CMDS} commands)`, kind: "system" });
+    pushLog({ text: `▶ Full suite starting — ${TOUR_TOTAL_STEPS} tour steps + ${CATALOG_SUITE_TOTAL} catalog tests = ${FULL_SUITE_TOTAL_STEPS} steps / ${FULL_SUITE_TOTAL_CMDS} commands`, kind: "system" });
 
     // ── Recording must start FIRST, synchronously from the click, so that
     // browsers without iframe.captureStream (Safari/Firefox) can fall back to
@@ -202,13 +208,13 @@ export function PlaygroundTour() {
     const t0 = performance.now();
     let firstFailure = -1;
 
-    for (let i = 0; i < PLAYGROUND_TOUR.length; i++) {
+    for (let i = 0; i < FULL_SUITE_STEPS.length; i++) {
       if (cancelRef.current.current) break;
-      const step = PLAYGROUND_TOUR[i];
+      const step = FULL_SUITE_STEPS[i];
       setActiveIdx(i);
       setStatuses((p) => ({ ...p, [i]: "running" }));
       pushLog({
-        text: `→ [${i + 1}/${TOUR_TOTAL_STEPS}] ${PAGE_LABELS[step.page] ?? step.page} · ${step.label}`,
+        text: `→ [${i + 1}/${FULL_SUITE_TOTAL_STEPS}] ${PAGE_LABELS[step.page] ?? step.page} · ${step.label}`,
         kind: "info",
       });
 
@@ -305,13 +311,20 @@ export function PlaygroundTour() {
   }
 
   // Group steps by page for the right-hand panel.
+  // Catalog suite gets its own dedicated group so the 224 tests don't drown
+  // out the playground sections in the side panel.
   const groupedSteps = useMemo(() => {
     const map = new Map<string, { idx: number; step: TourStep }[]>();
     PLAYGROUND_TOUR.forEach((step, idx) => {
       if (!map.has(step.page)) map.set(step.page, []);
       map.get(step.page)!.push({ idx, step });
     });
-    return Array.from(map.entries());
+    const tourPart = Array.from(map.entries());
+    const catalog = CATALOG_SUITE_STEPS.map((step, j) => ({
+      idx: PLAYGROUND_TOUR.length + j,
+      step,
+    }));
+    return [...tourPart, ["__catalog__", catalog] as [string, typeof catalog]];
   }, []);
 
   return (
@@ -326,7 +339,7 @@ export function PlaygroundTour() {
                 Playground Tour
               </CardTitle>
               <CardDescription>
-                Przeklikuje wszystkie {TOUR_TOTAL_STEPS} sekcji z 7 podstron Playground na żywo,
+                Przeklikuje wszystkie {TOUR_TOTAL_STEPS} sekcji Playground + uruchamia {CATALOG_SUITE_TOTAL} testów z Test Catalog
                 w iframe (75% widoku po starcie). Cała sesja jest opcjonalnie nagrywana do pliku.
               </CardDescription>
             </div>
@@ -356,7 +369,7 @@ export function PlaygroundTour() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <Stat label="Steps" value={TOUR_TOTAL_STEPS} tone="muted" />
+            <Stat label="Steps" value={FULL_SUITE_TOTAL_STEPS} tone="muted" />
             <Stat label="Done" value={completed} tone="primary" />
             <Stat label="Pass" value={counts.pass} tone="success" />
             <Stat label="Fail" value={counts.fail} tone="destructive" />
@@ -471,7 +484,7 @@ export function PlaygroundTour() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Steps ({TOUR_TOTAL_STEPS})</CardTitle>
+              <CardTitle className="text-sm">Steps ({FULL_SUITE_TOTAL_STEPS})</CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[280px] pr-2">
