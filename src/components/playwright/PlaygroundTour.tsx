@@ -69,6 +69,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/compliance/e-signatures": "Compliance — E-Signatures",
   "/compliance/data-integrity": "Compliance — ALCOA+",
   "/compliance/validation": "Compliance — IQ/OQ/PQ",
+  __catalog__: `Test Catalog (${CATALOG_SUITE_TOTAL})`,
 };
 
 export function PlaygroundTour() {
