@@ -89,7 +89,7 @@ export default function WorkflowBuilder() {
 
   async function handleSave() {
     if (!user) { toast.error("Zaloguj się"); return; }
-    const payload = { user_id: user.id, name, description, nodes, edges };
+    const payload: any = { user_id: user.id, name, description, nodes: nodes as any, edges: edges as any };
     if (currentId) {
       const { error } = await supabase.from("workflows").update(payload).eq("id", currentId);
       if (error) { toast.error(error.message); return; }
