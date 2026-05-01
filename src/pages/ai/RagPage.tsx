@@ -61,8 +61,8 @@ export default function RagPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5" /> RAG Q&A</CardTitle>
           <CardDescription>
-            Upload dokumentu → embeddings (Gemini text-embedding-004, 768d) → pgvector → odpowiedź z cytowaniami.
-            Guardrail: jeśli similarity &lt; 0.55, model odpowiada "nie wiem".
+            Upload dokumentu → lokalne embeddings (768d hashed bag-of-words) → pgvector → odpowiedź z cytowaniami przez Gemini.
+            Guardrail: jeśli similarity &lt; 0.15, model odpowiada "nie wiem".
           </CardDescription>
         </CardHeader>
       </Card>

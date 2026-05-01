@@ -17,19 +17,37 @@ function chunk(text: string, size = 1200, overlap = 150): string[] {
   return out;
 }
 
-async function embed(apiKey: string, texts: string[]): Promise<number[][]> {
-  // Use Lovable AI Gateway with Gemini embedding model
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: "google/text-embedding-004", input: texts }),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`embed ${res.status}: ${t.slice(0, 300)}`);
+// Local deterministic embedding (768-d hashed bag-of-words, L2-normalized).
+// Lovable AI Gateway nie udostępnia modeli embeddingowych, więc liczymy lokalnie.
+const EMB_DIM = 768;
+function hash32(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function embedOne(text: string): number[] {
+  const v = new Float64Array(EMB_DIM);
+  const tokens = text.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(t => t.length > 1);
+  for (const tok of tokens) {
+    const h = hash32(tok);
+    const idx = h % EMB_DIM;
+    const sign = (h >> 31) & 1 ? -1 : 1;
+    v[idx] += sign;
   }
-  const j = await res.json();
-  return (j.data ?? []).map((d: any) => d.embedding);
+  // bigrams for a bit of context
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const h = hash32(tokens[i] + "_" + tokens[i + 1]);
+    v[h % EMB_DIM] += ((h >> 31) & 1 ? -1 : 1) * 0.5;
+  }
+  let norm = 0;
+  for (let i = 0; i < EMB_DIM; i++) norm += v[i] * v[i];
+  norm = Math.sqrt(norm) || 1;
+  const out = new Array(EMB_DIM);
+  for (let i = 0; i < EMB_DIM; i++) out[i] = v[i] / norm;
+  return out;
+}
+async function embed(_apiKey: string, texts: string[]): Promise<number[][]> {
+  return texts.map(embedOne);
 }
 
 Deno.serve(async (req) => {

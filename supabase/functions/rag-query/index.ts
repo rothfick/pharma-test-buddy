@@ -7,15 +7,31 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-async function embed(apiKey: string, text: string): Promise<number[]> {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: "google/text-embedding-004", input: [text] }),
-  });
-  if (!res.ok) throw new Error(`embed ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const j = await res.json();
-  return j.data[0].embedding;
+// Local deterministic embedding (musi być identyczne jak w rag-ingest)
+const EMB_DIM = 768;
+function hash32(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+async function embed(_apiKey: string, text: string): Promise<number[]> {
+  const v = new Float64Array(EMB_DIM);
+  const tokens = text.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(t => t.length > 1);
+  for (const tok of tokens) {
+    const h = hash32(tok);
+    const sign = (h >> 31) & 1 ? -1 : 1;
+    v[h % EMB_DIM] += sign;
+  }
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const h = hash32(tokens[i] + "_" + tokens[i + 1]);
+    v[h % EMB_DIM] += ((h >> 31) & 1 ? -1 : 1) * 0.5;
+  }
+  let norm = 0;
+  for (let i = 0; i < EMB_DIM; i++) norm += v[i] * v[i];
+  norm = Math.sqrt(norm) || 1;
+  const out = new Array(EMB_DIM);
+  for (let i = 0; i < EMB_DIM; i++) out[i] = v[i] / norm;
+  return out;
 }
 
 Deno.serve(async (req) => {
@@ -76,7 +92,7 @@ Deno.serve(async (req) => {
   const chunks = (matches ?? []) as Array<{ chunk_id: string; document_id: string; content: string; similarity: number }>;
   const top = chunks[0];
   // Guardrail: brak dobrego matcha
-  if (!top || top.similarity < 0.55) {
+  if (!top || top.similarity < 0.15) {
     await admin.from("llm_traces").insert({
       user_id: userId, feature: "rag_query", model: "guardrail",
       prompt_tokens: 0, completion_tokens: 0, cost_usd: 0,
