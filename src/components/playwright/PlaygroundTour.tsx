@@ -48,7 +48,7 @@ import {
   type TourStep,
 } from "@/lib/playground-tour";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
-import { Compass as CompassIcon } from "lucide-react";
+
 import { ScreenRecorder, type RecorderResult } from "@/lib/screen-recorder";
 
 type StepStatus = "idle" | "running" | "pass" | "fail" | "skipped";
@@ -693,7 +693,7 @@ function CategoryChip({
   active: boolean;
 }) {
   const style = CATEGORY_STYLES[category as keyof typeof CATEGORY_STYLES];
-  const Icon = style?.icon ?? CompassIcon;
+  const Icon = style?.icon ?? Compass;
   const done = stats.pass + stats.fail + stats.skipped;
   const pct = stats.total ? Math.round((done / stats.total) * 100) : 0;
   return (
