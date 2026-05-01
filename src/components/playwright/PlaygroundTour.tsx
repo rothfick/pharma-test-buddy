@@ -133,6 +133,49 @@ export function PlaygroundTour() {
     return { pass, fail, skipped };
   }, [statuses]);
 
+  // Per-category live counters for the "Category strip" shown above the
+  // preview. Order matches the user's request (API, Smoke, Regression,
+  // Chaos, Security, Performance) with the rest appended after.
+  const PRIMARY_CATEGORIES: StepCategory[] = [
+    "Smoke",
+    "API",
+    "Regression",
+    "Chaos / Resilience",
+    "Security",
+    "Performance",
+  ];
+  const SECONDARY_CATEGORIES: StepCategory[] = [
+    "Auth & MFA",
+    "E2E Journeys",
+    "Accessibility",
+    "Visual",
+    "Mobile",
+    "Compliance (21 CFR Part 11)",
+    "Tour" as StepCategory,
+  ];
+
+  const categoryStats = useMemo(() => {
+    const init = () => ({ total: 0, pass: 0, fail: 0, running: 0, skipped: 0, idle: 0 });
+    const map = new Map<StepCategory, ReturnType<typeof init>>();
+    for (let i = 0; i < FULL_SUITE_TOTAL_STEPS; i++) {
+      const cat = STEP_CATEGORIES[i] ?? ("Tour" as StepCategory);
+      if (!map.has(cat)) map.set(cat, init());
+      const bucket = map.get(cat)!;
+      bucket.total++;
+      const st = statuses[i];
+      if (st === "pass") bucket.pass++;
+      else if (st === "fail") bucket.fail++;
+      else if (st === "running") bucket.running++;
+      else if (st === "skipped") bucket.skipped++;
+      else bucket.idle++;
+    }
+    return map;
+  }, [statuses]);
+
+  const activeCategory: StepCategory | null =
+    activeIdx >= 0 ? STEP_CATEGORIES[activeIdx] ?? null : null;
+
+
   function pushLog(line: Omit<LogLine, "ts">) {
     setLogs((prev) => {
       const next = prev.concat({ ...line, ts: Date.now() });
