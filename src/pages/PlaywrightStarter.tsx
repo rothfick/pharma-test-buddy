@@ -43,6 +43,10 @@ import {
 } from "@/lib/playwright-tests";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
 import { supabase } from "@/integrations/supabase/client";
+import { LiveBrowser, type HighlightRect } from "@/components/playwright/LiveBrowser";
+import { LiveDriver, type DriverEvent } from "@/lib/live-driver";
+import { buildScenario } from "@/lib/live-scenarios";
+import { snapshotTasks, rollbackTasks } from "@/lib/live-rollback";
 import { cn } from "@/lib/utils";
 
 type RunStatus = TestStatus | "running" | "queued" | "idle";
@@ -445,15 +449,140 @@ function RunWithPreview({ test }: { test: PwTest }) {
   );
   const lineCount = useMemo(() => test.code.split("\n").length, [test.code]);
 
+  // Manual single-test runner state
+  const [open, setOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [iframeUrl, setIframeUrl] = useState<string>("/");
+  const [highlight, setHighlight] = useState<HighlightRect | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const [flashKey, setFlashKey] = useState(0);
+  const [shotLabel, setShotLabel] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState(-1);
+  const [stepStatus, setStepStatus] = useState<Record<number, "running" | "pass" | "fail">>({});
+  const [logs, setLogs] = useState<string[]>([]);
+  const [outcome, setOutcome] = useState<"idle" | "running" | "pass" | "fail">("idle");
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const driverRef = useRef<LiveDriver | null>(null);
+  const cancelRef = useRef<{ current: boolean }>({ current: false });
+
+  const pushLog = (text: string) =>
+    setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()} ${text}`]);
+
+  const reset = () => {
+    setActiveStep(-1);
+    setStepStatus({});
+    setLogs([]);
+    setHighlight(null);
+    setCursor(null);
+    setShotLabel(null);
+    setOutcome("idle");
+  };
+
+  async function runManually() {
+    if (running) return;
+    reset();
+    setOpen(true);
+    setRunning(true);
+    setOutcome("running");
+    cancelRef.current = { current: false };
+
+    const scenario = buildScenario(test);
+    pushLog(`▶ ${test.id} — ${test.title}`);
+    pushLog(`   ${scenario.cmds.length} commands across ${scenario.stepRanges.length} steps`);
+
+    // Snapshot if mutating
+    let snap: Awaited<ReturnType<typeof snapshotTasks>> | null = null;
+    if (scenario.mutates) {
+      pushLog("📸 Snapshotting tasks for rollback…");
+      snap = await snapshotTasks();
+    }
+
+    // Initial navigation: take first goto if present, otherwise "/"
+    const firstGoto = scenario.cmds.find((c) => c.kind === "goto");
+    const startPath = firstGoto && firstGoto.kind === "goto" ? firstGoto.path : "/";
+    setIframeUrl(startPath);
+    await new Promise((r) => setTimeout(r, 700));
+
+    if (!iframeRef.current) {
+      pushLog("✗ iframe not mounted");
+      setRunning(false);
+      setOutcome("fail");
+      return;
+    }
+
+    const driver = new LiveDriver({
+      iframe: iframeRef.current,
+      origin: window.location.origin,
+      cancelRef: cancelRef.current,
+      defaultTimeoutMs: 12000,
+      onEvent: (e: DriverEvent) => {
+        if (e.type === "highlight" && e.rect) {
+          setHighlight(e.rect);
+          setCursor({ x: e.rect.x + e.rect.w / 2, y: e.rect.y + e.rect.h / 2 });
+        } else if (e.type === "screenshot") {
+          setShotLabel(e.label ?? null);
+          setFlashKey((k) => k + 1);
+          window.setTimeout(() => setShotLabel(null), 900);
+        } else if (e.type === "url" && e.url) {
+          setIframeUrl(e.url);
+        } else if (e.type === "log" && e.message) {
+          pushLog(`   · ${e.message}`);
+        }
+      },
+    });
+    driverRef.current = driver;
+
+    let allOk = true;
+    for (let s = 0; s < scenario.stepRanges.length; s++) {
+      if (cancelRef.current.current) break;
+      const range = scenario.stepRanges[s];
+      setActiveStep(s);
+      setStepStatus((p) => ({ ...p, [s]: "running" }));
+      pushLog(`→ [${s + 1}/${scenario.stepRanges.length}] ${range.label}`);
+      const slice = scenario.cmds.slice(range.start, range.end + 1);
+      const goto = slice.find((c) => c.kind === "goto");
+      if (goto && goto.kind === "goto") setIframeUrl(goto.path);
+      const r = await driver.runAll(slice);
+      if (r.ok) {
+        setStepStatus((p) => ({ ...p, [s]: "pass" }));
+        pushLog("   ✓ done");
+      } else {
+        allOk = false;
+        setStepStatus((p) => ({ ...p, [s]: "fail" }));
+        pushLog(`   ✗ ${r.error ?? "failed"}`);
+        break;
+      }
+    }
+
+    if (snap) {
+      try {
+        const rb = await rollbackTasks(snap);
+        pushLog(`↺ rollback: deleted ${rb.deleted}, restored ${rb.restored}`);
+      } catch (err) {
+        pushLog(`✗ rollback failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    setOutcome(cancelRef.current.current ? "fail" : allOk ? "pass" : "fail");
+    setRunning(false);
+    setActiveStep(-1);
+  }
+
+  function stop() {
+    cancelRef.current.current = true;
+    driverRef.current?.cancel();
+    setRunning(false);
+  }
+
   return (
     <div className="space-y-6">
       {/* Code block — full width, expanded */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
             <FileCode className="h-3.5 w-3.5" /> Test source
           </h4>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-[10px] font-mono">
               tests/{test.id}.spec.ts
             </Badge>
@@ -465,6 +594,16 @@ function RunWithPreview({ test }: { test: PwTest }) {
                 {t}
               </Badge>
             ))}
+            <Button
+              size="sm"
+              onClick={runManually}
+              disabled={running}
+              data-testid={`run-manually-${test.id}`}
+              className="shadow-elegant"
+            >
+              <Play className="mr-1 h-3 w-3" />
+              {running ? "Running…" : "Run manually"}
+            </Button>
           </div>
         </div>
         <CodeBlock code={test.code} filename={`tests/${test.id}.spec.ts`} />
@@ -488,13 +627,28 @@ function RunWithPreview({ test }: { test: PwTest }) {
         <ol className="grid gap-2 md:grid-cols-2">
           {test.steps.map((s, i) => {
             const pct = totalMs > 0 ? Math.round(((s.ms ?? 0) / totalMs) * 100) : 0;
+            const st = stepStatus[i];
             return (
               <li
                 key={i}
-                className="flex items-start gap-3 rounded-md border bg-card/50 px-3 py-2.5 transition hover:border-primary/40 hover:bg-card"
+                className={cn(
+                  "flex items-start gap-3 rounded-md border bg-card/50 px-3 py-2.5 transition",
+                  st === "running" && "border-primary/60 bg-primary/5",
+                  st === "pass" && "border-emerald-500/40 bg-emerald-500/5",
+                  st === "fail" && "border-destructive/50 bg-destructive/5",
+                  !st && "hover:border-primary/40 hover:bg-card",
+                )}
               >
                 <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-[10px] font-semibold text-primary">
-                  {String(i + 1).padStart(2, "0")}
+                  {st === "running" ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : st === "pass" ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  ) : st === "fail" ? (
+                    <XCircle className="h-3.5 w-3.5 text-destructive" />
+                  ) : (
+                    String(i + 1).padStart(2, "0")
+                  )}
                 </span>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center justify-between gap-2">
@@ -515,6 +669,84 @@ function RunWithPreview({ test }: { test: PwTest }) {
           })}
         </ol>
       </div>
+
+      {/* Manual run modal */}
+      <Dialog open={open} onOpenChange={(v) => { if (!running) setOpen(v); }}>
+        <DialogContent className="max-w-6xl w-[92vw] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Manual run — {test.id}</DialogTitle>
+          <DialogDescription className="sr-only">{test.title}</DialogDescription>
+          <div className="flex items-center justify-between border-b px-4 py-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge variant="outline" className="font-mono text-[10px]">{test.id}</Badge>
+              <span className="text-sm font-medium truncate">{test.title}</span>
+              <Badge variant="outline" className="font-mono text-[10px]">{iframeUrl}</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              {outcome === "pass" && (
+                <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+                  <CheckCircle2 className="mr-1 h-3 w-3" /> Passed
+                </Badge>
+              )}
+              {outcome === "fail" && (
+                <Badge variant="destructive">
+                  <XCircle className="mr-1 h-3 w-3" /> Failed
+                </Badge>
+              )}
+              {outcome === "running" && (
+                <Badge variant="secondary">
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Running
+                </Badge>
+              )}
+              {running ? (
+                <Button size="sm" variant="destructive" onClick={stop}>
+                  <Square className="mr-1 h-3 w-3" /> Stop
+                </Button>
+              ) : (
+                <>
+                  <Button size="sm" variant="ghost" onClick={runManually}>
+                    <RefreshCw className="mr-1 h-3 w-3" /> Replay
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+                    Close
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="grid lg:grid-cols-[3fr,2fr] gap-0">
+            <div className="bg-muted/30 p-3">
+              <LiveBrowser
+                url={iframeUrl}
+                highlight={highlight}
+                cursor={cursor}
+                flashKey={flashKey}
+                screenshotLabel={shotLabel}
+                recording={running}
+                onIframeReady={(el) => {
+                  iframeRef.current = el;
+                  if (el.src === "" || el.src === "about:blank") {
+                    el.src = `${window.location.origin}${iframeUrl}`;
+                  }
+                }}
+              />
+            </div>
+            <div className="border-l flex flex-col max-h-[70vh]">
+              <div className="border-b px-3 py-2 text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1.5">
+                <Terminal className="h-3.5 w-3.5" /> Live log
+              </div>
+              <div className="flex-1 overflow-auto bg-zinc-950 p-3 font-mono text-[11px] leading-5 text-zinc-200">
+                {logs.length === 0 ? (
+                  <p className="text-zinc-500">Press Run manually to start.</p>
+                ) : (
+                  logs.map((l, i) => (
+                    <div key={i} className="whitespace-pre-wrap">{l}</div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
