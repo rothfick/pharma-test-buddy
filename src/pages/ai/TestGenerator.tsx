@@ -53,8 +53,8 @@ export default function TestGenerator() {
         },
         body: JSON.stringify({
           feature: "test-generator",
-          model: "google/gemini-2.5-pro",
-          fallbacks: ["google/gemini-3-flash-preview"],
+          model: "google/gemini-3-flash-preview",
+          fallbacks: ["google/gemini-2.5-flash", "google/gemini-2.5-pro"],
           stream: true,
           messages: [
             { role: "system", content: SYSTEM },
@@ -88,9 +88,13 @@ export default function TestGenerator() {
           try {
             const j = JSON.parse(data);
             const delta = j.choices?.[0]?.delta?.content;
-            if (typeof delta === "string") {
+            const reasoning = j.choices?.[0]?.delta?.reasoning;
+            if (typeof delta === "string" && delta.length > 0) {
               acc += delta;
               setOutput(acc);
+            } else if (typeof reasoning === "string" && reasoning.length > 0 && acc.length === 0) {
+              // show thinking indicator until real content starts
+              setOutput("// 🧠 Model myśli…\n// " + reasoning.split("\n")[0].slice(0, 120));
             }
           } catch { /* partial */ }
         }
@@ -123,7 +127,7 @@ export default function TestGenerator() {
             <Wand2 className="h-4 w-4" /> User story
           </CardTitle>
           <CardDescription>
-            Opisz scenariusz po polsku lub angielsku. Model: <Badge variant="secondary">gemini-2.5-pro</Badge> z fallbackiem na flash.
+            Opisz scenariusz po polsku lub angielsku. Model: <Badge variant="secondary">gemini-3-flash</Badge> z fallbackiem na 2.5-flash → 2.5-pro.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
