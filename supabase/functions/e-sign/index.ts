@@ -54,21 +54,39 @@ Deno.serve(async (req) => {
     }
     const body = parsed.data;
 
-    // Re-authenticate with password (21 CFR Part 11 §11.200)
-    const reauth = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!
-    );
-    const { error: signErr } = await reauth.auth.signInWithPassword({
-      email: user.email,
-      password: body.password,
-    });
+    // Re-authenticate per 21 CFR Part 11 §11.200
+    // Email/password users: verify password. OAuth users: require typed "I CONFIRM" phrase.
+    const provider = (user.app_metadata?.provider ?? "email") as string;
+    const isOAuth = provider !== "email";
 
-    if (signErr) {
-      return new Response(JSON.stringify({ error: "Password verification failed" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (isOAuth) {
+      if ((body.confirmation ?? "").trim().toUpperCase() !== "I CONFIRM") {
+        return new Response(JSON.stringify({ error: `OAuth user (${provider}): type "I CONFIRM" to re-authenticate.` }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      if (!body.password) {
+        return new Response(JSON.stringify({ error: "Password required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const reauth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!
+      );
+      const { error: signErr } = await reauth.auth.signInWithPassword({
+        email: user.email,
+        password: body.password,
       });
+      if (signErr) {
+        return new Response(JSON.stringify({ error: "Password verification failed" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const ts = new Date().toISOString();
