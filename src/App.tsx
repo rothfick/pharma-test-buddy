@@ -55,6 +55,7 @@ import ChaosOverview from "./pages/chaos/Overview";
 import ChaosExperiments from "./pages/chaos/Experiments";
 import ChaosPerfLab from "./pages/chaos/PerfLab";
 import ChaosSlos from "./pages/chaos/Slos";
+import PlaywrightStarter from "./pages/PlaywrightStarter";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -131,6 +132,7 @@ const App = () => (
                 <Route path="perf" element={<ChaosPerfLab />} />
                 <Route path="slo" element={<ChaosSlos />} />
               </Route>
+              <Route path="/playwright-starter" element={<PlaywrightStarter />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
             <Route path="*" element={<NotFound />} />

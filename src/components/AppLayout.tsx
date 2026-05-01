@@ -11,19 +11,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, ListTodo, FileText, FlaskConical, LogOut, User as UserIcon, Beaker, Sparkles, ShieldCheck, BarChart3, Lock, Zap } from "lucide-react";
+import { LayoutDashboard, ListTodo, FlaskConical, LogOut, User as UserIcon, Beaker, Sparkles, ShieldCheck, BarChart3, Lock, Zap, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, testid: "nav-dashboard" },
   { to: "/tasks", label: "Tasks", icon: ListTodo, testid: "nav-tasks" },
-  { to: "/wizard", label: "New Task", icon: FileText, testid: "nav-wizard" },
   { to: "/playground", label: "Playground", icon: FlaskConical, testid: "nav-playground" },
   { to: "/ai", label: "AI Lab", icon: Sparkles, testid: "nav-ai" },
   { to: "/compliance", label: "GxP", icon: ShieldCheck, testid: "nav-compliance" },
   { to: "/quality-metrics", label: "Quality", icon: BarChart3, testid: "nav-quality" },
   { to: "/chaos", label: "Chaos", icon: Zap, testid: "nav-chaos" },
   { to: "/security", label: "Security", icon: Lock, testid: "nav-security" },
+  { to: "/playwright-starter", label: "Starter", icon: Download, testid: "nav-starter" },
 ];
 
 export function AppLayout() {
