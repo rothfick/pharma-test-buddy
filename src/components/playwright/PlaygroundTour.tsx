@@ -339,7 +339,7 @@ export function PlaygroundTour() {
                 Playground Tour
               </CardTitle>
               <CardDescription>
-                Przeklikuje wszystkie {TOUR_TOTAL_STEPS} sekcji z 7 podstron Playground na żywo,
+                Przeklikuje wszystkie {TOUR_TOTAL_STEPS} sekcji Playground + uruchamia {CATALOG_SUITE_TOTAL} testów z Test Catalog
                 w iframe (75% widoku po starcie). Cała sesja jest opcjonalnie nagrywana do pliku.
               </CardDescription>
             </div>
