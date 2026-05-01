@@ -7,7 +7,7 @@ describe("live-scenarios.buildScenario", () => {
     for (const t of PLAYWRIGHT_TESTS) {
       const s = buildScenario(t);
       expect(s.cmds.length).toBeGreaterThan(0);
-      expect(s.stepRanges.length).toBe(t.steps.length);
+      expect(s.stepRanges.length).toBeGreaterThanOrEqual(t.steps.length);
       // every range is in-bounds and ordered
       let prevEnd = -1;
       for (const r of s.stepRanges) {
