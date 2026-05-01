@@ -193,10 +193,13 @@ export default function WorkflowBuilder() {
                     selected === n.id ? "border-primary bg-primary/5" : "border-border";
                   return (
                     <div key={n.id}>
-                      <button
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelected(n.id)}
+                        onKeyDown={(e) => { if (e.key === "Enter") setSelected(n.id); }}
                         data-testid={`wf-node-${n.id}`}
-                        className={`flex w-full items-center justify-between rounded-md border-2 px-3 py-2 text-left transition-colors ${statusColor}`}
+                        className={`flex w-full cursor-pointer items-center justify-between rounded-md border-2 px-3 py-2 text-left transition-colors ${statusColor}`}
                       >
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="font-mono text-[10px] uppercase">{n.type}</Badge>
@@ -206,9 +209,16 @@ export default function WorkflowBuilder() {
                           {stepRes?.status === "success" && <CircleCheck className="h-4 w-4 text-green-500" />}
                           {stepRes?.status === "error" && <CircleX className="h-4 w-4 text-destructive" />}
                           {stepRes?.duration_ms != null && <span className="text-xs text-muted-foreground">{stepRes.duration_ms}ms</span>}
-                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteNode(n.id); }} />
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); deleteNode(n.id); }}
+                            className="rounded p-1 text-muted-foreground hover:text-destructive"
+                            aria-label="Delete node"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
-                      </button>
+                      </div>
                       {idx < nodes.length - 1 && <div className="flex justify-center py-1"><ArrowDown className="h-4 w-4 text-muted-foreground" /></div>}
                     </div>
                   );
