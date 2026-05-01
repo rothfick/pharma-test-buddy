@@ -156,7 +156,7 @@ export function PlaygroundTour() {
     setRunning(true);
     setExpanded(true); // auto-expand the live preview to 75%
     cancelRef.current = { current: false };
-    pushLog({ text: `▶ Playground tour starting (${TOUR_TOTAL_STEPS} steps, ${TOUR_TOTAL_CMDS} commands)`, kind: "system" });
+    pushLog({ text: `▶ Full suite starting — ${TOUR_TOTAL_STEPS} tour steps + ${CATALOG_SUITE_TOTAL} catalog tests = ${FULL_SUITE_TOTAL_STEPS} steps / ${FULL_SUITE_TOTAL_CMDS} commands`, kind: "system" });
 
     // ── Recording must start FIRST, synchronously from the click, so that
     // browsers without iframe.captureStream (Safari/Firefox) can fall back to
