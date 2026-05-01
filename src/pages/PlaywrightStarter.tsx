@@ -42,6 +42,7 @@ import {
   type TestStatus,
 } from "@/lib/playwright-tests";
 import { CATEGORY_STYLES } from "@/lib/playwright-categories";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 type RunStatus = TestStatus | "running" | "queued" | "idle";
