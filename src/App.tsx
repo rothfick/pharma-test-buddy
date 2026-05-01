@@ -55,6 +55,7 @@ import ChaosOverview from "./pages/chaos/Overview";
 import ChaosExperiments from "./pages/chaos/Experiments";
 import ChaosPerfLab from "./pages/chaos/PerfLab";
 import ChaosSlos from "./pages/chaos/Slos";
+import PlaywrightStarter from "./pages/PlaywrightStarter";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
