@@ -25,6 +25,7 @@ import AITestGenerator from "./pages/ai/TestGenerator";
 import AISelfHealing from "./pages/ai/SelfHealing";
 import AIBugTriage from "./pages/ai/BugTriage";
 import AIVisualDiff from "./pages/ai/VisualDiff";
+import AIAgentCrew from "./pages/ai/AgentCrew";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
@@ -66,7 +67,7 @@ const App = () => (
                 <Route path="self-healing" element={<AISelfHealing />} />
                 <Route path="bug-triage" element={<AIBugTriage />} />
                 <Route path="visual-diff" element={<AIVisualDiff />} />
-                <Route path="agents" element={<AIComingSoon title="Agent Crew" description="Planner → Explorer → Writer → Critic z tool calling." plan={["Edge function agent-crew: pętla z handoffami między rolami","Tools: navigate, read_dom, query_db (whitelisted), search_docs (RAG)","Realtime: agent_steps streamuje się do UI jako timeline","Cancel mid-run, retry failed step, koszt całkowity per run"]} />} />
+                <Route path="agents" element={<AIAgentCrew />} />
                 <Route path="rag" element={<AIComingSoon title="RAG nad dokumentacją" description="Upload PDF/MD → embeddings → Q&A z cytowaniami." plan={["Upload dokumentu → chunking (500 tok overlap 50)","Embeddingi → pgvector (już gotowe w schemacie)","Q&A: top-k retrieval + answer z cytowaniami","Guardrail: similarity<0.7 → 'I don't know'"]} />} />
                 <Route path="evals" element={<AIComingSoon title="Eval Harness" description="Datasety, metryki, A/B promptów." plan={["Prompt registry UI (CRUD wersji)","Datasets jako JSONL (input + expected)","Run eval: model X prompt vN → score, latency, cost","Side-by-side comparison + wykres trendu"]} />} />
                 <Route path="guardrails" element={<AIComingSoon title="Guardrails Playground" description="Prompt injection, PII, schema validation." plan={["Predefiniowane ataki (Ignore previous, DAN, prompt leak)","Pipeline: input scanner → LLM → output scanner","PII redaction (regex + LLM) z podświetleniem zamian","Score: blocked vs passed, false positive rate"]} />} />
